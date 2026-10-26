@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KPI Confiabilidad — Dashboard Sistemas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,700&display=swap" rel="stylesheet">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root {
+  --font-anthropic-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-anthropic-serif: 'DM Sans', 'Inter', sans-serif;
+  --cds-gap-xs: 6px; --cds-gap-sm: 10px; --cds-gap-md: 18px; --cds-gap-lg: 28px;
+  --cds-pad-xs: 6px; --cds-pad-sm: 10px; --cds-pad-md: 14px; --cds-pad-lg: 20px;
+  --cds-font-size-caption: 0.8rem; --cds-font-size-body: 0.9rem;
+  --cds-font-size-heading: 1.1rem; --cds-font-size-title: 1.6rem;
+  --cds-font-weight-medium: 600;
+  --cds-radius: 12px;
+  --cds-dur-slow: 0.25s;
+  --color-fg: #0f172a; --color-fg-muted: #64748b;
+  --color-panel: #ffffff; --color-border-line: #e2e8f0;
+  --color-ok: #10b981; --color-bad: #ef4444; --color-warn: #f59e0b;
+  --cds-surface-popover: #ffffff; --cds-border: #e2e8f0;
+  --cds-shadow-popover: 0 8px 24px rgba(0,0,0,0.12);
+  --cds-chart-axis: #cbd5e1; --cds-chart-grid: #f1f5f9;
+  --cds-chart-reference: #94a3b8; --cds-text-secondary: #64748b;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+  --card-shadow-hover: 0 4px 12px rgba(0,0,0,0.08);
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 20px; font-family: var(--font-anthropic-sans); color: var(--color-fg); background: #f8fafc; -webkit-font-smoothing: antialiased; line-height: 1.5; }
+#dash-root { max-width: 1440px; margin: 0 auto; }
+#dash-root .jr { font-family: var(--font-anthropic-sans); display: flex; flex-direction: column; gap: var(--cds-gap-lg); }
+#dash-root .jr-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: var(--cds-gap-md); padding-bottom: 8px; }
+#dash-root .jr-title { font-family: var(--font-anthropic-serif); font-weight: 700; font-size: 1.75rem; margin: 0; letter-spacing: -0.02em; color: #0f172a; }
+#dash-root .jr-take { color: var(--color-fg-muted); font-size: var(--cds-font-size-body); margin: 6px 0 0; max-width: 60rem; line-height: 1.6; }
+#dash-root .jr-take b { font-weight: 600; color: var(--color-fg); }
+#dash-root .jr-ctrl { display: flex; gap: var(--cds-gap-sm); align-items: center; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-weight: 500; }
+#dash-root .jr-ctrl select { font: inherit; font-size: var(--cds-font-size-body); font-weight: 500; color: var(--color-fg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: 8px; padding: 6px 12px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
+#dash-root .jr-ctrl select:hover { border-color: #94a3b8; }
+#dash-root .jr-ctrl select:focus { outline: none; border-color: #0098AA; box-shadow: 0 0 0 3px rgba(0,152,170,0.12); }
+#dash-root .jr-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: var(--cds-gap-md); }
+#dash-root .jr-tile, #dash-root .jr-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); min-width: 0; box-shadow: var(--card-shadow); transition: box-shadow 0.2s, transform 0.2s; }
+#dash-root .jr-tile:hover, #dash-root .jr-card:hover { box-shadow: var(--card-shadow-hover); }
+#dash-root .jr-lbl { font-size: 0.75rem; color: var(--color-fg-muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 500; }
+#dash-root .jr-val { font-family: var(--font-anthropic-serif); font-weight: 700; font-size: 1.75rem; margin: 8px 0 4px; font-variant-numeric: tabular-nums; min-height: 1.3em; letter-spacing: -0.02em; }
+#dash-root .jr-sub { font-size: 0.75rem; color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+#dash-root .jr-good { color: var(--color-ok); }
+#dash-root .jr-bad { color: var(--color-bad); }
+#dash-root .jr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr)); gap: var(--cds-gap-md); }
+#dash-root .jr-card h3 { font-size: 1rem; font-weight: 600; margin: 0; color: #1e293b; }
+#dash-root .jr-note { font-size: 0.78rem; color: var(--color-fg-muted); margin: 4px 0 var(--cds-gap-md); line-height: 1.5; }
+#dash-root .jr-chart { position: relative; min-height: 260px; }
+#dash-root .jr-chart.jr-heat { min-height: 300px; }
+#dash-root .jr-chart svg { display: block; overflow: visible; }
+#dash-root .jr-chart text { font-size: var(--cds-font-size-caption); fill: var(--color-fg-muted); font-family: var(--font-anthropic-sans); }
+#dash-root .jr-tip { position: absolute; pointer-events: none; background: #0f172a; color: #f1f5f9; border: none; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); padding: 8px 12px; font-size: 0.78rem; white-space: nowrap; z-index: 5; display: none; font-variant-numeric: tabular-nums; }
+#dash-root .jr-tip .t { color: #94a3b8; margin-bottom: 3px; font-weight: 500; }
+#dash-root .jr-sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
+#dash-root .jr-legend { display: flex; gap: var(--cds-gap-md); font-size: 0.78rem; color: var(--color-fg-muted); margin-bottom: var(--cds-gap-sm); flex-wrap: wrap; font-weight: 500; }
+#dash-root .jr-tbl-wrap { max-height: 28rem; overflow: auto; border-radius: 8px; }
+#dash-root .jr-tbl { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-body); font-variant-numeric: tabular-nums; }
+#dash-root .jr-tbl th { position: sticky; top: 0; background: #f8fafc; text-align: right; font-weight: 600; font-size: 0.75rem; color: var(--color-fg-muted); padding: 10px 12px; border-bottom: 2px solid var(--color-border-line); text-transform: uppercase; letter-spacing: 0.04em; }
+#dash-root .jr-tbl td { text-align: right; padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
+#dash-root .jr-tbl th:first-child, #dash-root .jr-tbl td:first-child { text-align: left; font-weight: 500; }
+#dash-root .jr-tbl tbody tr { cursor: pointer; transition: background 0.15s; }
+#dash-root .jr-tbl tbody tr:hover { background: #f1f5f9; }
+#dash-root .jr-tbl tbody tr.sel { background: rgba(0,152,170,0.06); outline: 2px solid #0098AA; outline-offset: -2px; }
+#dash-root .jr-pick { font: inherit; font-size: var(--cds-font-size-caption); font-weight: 500; background: none; border: 1px solid var(--color-border-line); border-radius: 8px; padding: 4px 12px; cursor: pointer; color: var(--color-fg); transition: all 0.15s; }
+#dash-root .jr-pick:hover { background: #f1f5f9; border-color: #94a3b8; }
+#dash-root .jr-fail { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: inherit; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+#dash-root .jr-fail::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--color-bad); }
+#dash-root [data-dash-source-state=empty] { color: transparent; }
+#dash-root [data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+#dash-root .jr-hide-sm { }
+@media (max-width: 560px) { #dash-root .jr-hide-sm { display: none; } }
+#dash-root .jr-filters { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm) var(--cds-gap-md); align-items: center; }
+#dash-root .jr-reset { font: inherit; font-size: 0.78rem; font-weight: 500; background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: 8px; padding: 6px 14px; cursor: pointer; color: var(--color-fg-muted); transition: all 0.15s; box-shadow: var(--card-shadow); }
+#dash-root .jr-reset:hover { background: #f1f5f9; border-color: #94a3b8; color: var(--color-fg); }
+#dash-root .jr-scope { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+#dash-root .jr-wf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: var(--cds-gap-lg); align-items: start; }
+#dash-root .jr-wf-grid .jr-chart { min-height: 200px; }
+#dash-root .jr-tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--color-border-line); background: var(--color-panel); border-radius: 12px 12px 0 0; padding: 0 4px; }
+#dash-root .jr-tabs button { font: inherit; font-size: var(--cds-font-size-body); font-weight: 500; background: none; border: none; border-bottom: 3px solid transparent; padding: 12px 20px; color: var(--color-fg-muted); cursor: pointer; margin-bottom: -2px; transition: all 0.15s; border-radius: 8px 8px 0 0; }
+#dash-root .jr-tabs button:hover { color: var(--color-fg); background: #f1f5f9; }
+#dash-root .jr-tabs button[aria-selected=true] { color: #0098AA; border-bottom-color: #0098AA; font-weight: 600; background: rgba(0,152,170,0.04); }
+#dash-root .jr-page { display: flex; flex-direction: column; gap: var(--cds-gap-lg); }
+#dash-root .jr-page[hidden] { display: none; }
+#dash-root .jr-sbar { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); align-items: center; justify-content: space-between; }
+#dash-root .jr-sgrid-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: var(--cds-gap-md); }
+#dash-root .jr-sstack { display: flex; flex-direction: column; gap: var(--cds-gap-md); }
+#dash-root .jr-sstack .jr-tile { flex: 1; }
+#dash-root .jr-chart.jr-gauge { min-height: 170px; }
+#dash-root .jr-chart.jr-donut { min-height: 200px; }
+#dash-root .jr-ms { position: relative; }
+#dash-root .jr-ms summary { list-style: none; cursor: pointer; font-size: var(--cds-font-size-body); font-weight: 500; color: var(--color-fg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: 8px; padding: 6px 12px; min-width: 9rem; transition: all 0.15s; box-shadow: var(--card-shadow); }
+#dash-root .jr-ms summary:hover { border-color: #94a3b8; }
+#dash-root .jr-ms summary::-webkit-details-marker { display: none; }
+#dash-root .jr-ms summary::after { content: " \25BE"; color: var(--color-fg-muted); }
+#dash-root .jr-ms-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: 12px; min-width: 16rem; max-height: 22rem; overflow: auto; display: flex; flex-direction: column; gap: var(--cds-gap-sm); }
+#dash-root .jr-ms-list { display: flex; flex-direction: column; gap: 6px; font-size: var(--cds-font-size-body); color: var(--color-fg); }
+#dash-root .jr-ms-list label { display: flex; gap: 8px; align-items: center; cursor: pointer; white-space: nowrap; padding: 4px 6px; border-radius: 6px; transition: background 0.12s; }
+#dash-root .jr-ms-list label:hover { background: #f1f5f9; }
+#dash-root .jr-card { position: relative; }
+#dash-root .jr-copy { position: absolute; top: var(--cds-pad-md); right: var(--cds-pad-md); font: inherit; font-size: 0.75rem; font-weight: 500; color: var(--color-fg-muted); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: 8px; padding: 4px 10px; cursor: pointer; opacity: 0; z-index: 6; transition: opacity 0.2s, background 0.15s; box-shadow: var(--card-shadow); }
+#dash-root .jr-card:hover .jr-copy { opacity: 1; }
+#dash-root .jr-copy:hover { background: #f1f5f9; color: var(--color-fg); }
+#dash-root .jr-card h3 { padding-right: 7.5rem; }
+#dash-root .jr-days { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr)); gap: var(--cds-gap-sm); min-height: 120px; }
+#dash-root .jr-day { border: 1.5px solid #0098AA; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 0.78rem; line-height: 1.45; min-width: 0; background: linear-gradient(135deg, rgba(0,152,170,0.02), transparent); }
+#dash-root .jr-day-h { font-weight: 700; font-size: var(--cds-font-size-body); color: var(--color-fg); border-bottom: 2px solid #0098AA; padding-bottom: 6px; }
+#dash-root .jr-day-h span { font-weight: 400; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+#dash-root .jr-day-i { color: var(--color-fg); overflow-wrap: anywhere; }
+#dash-root .jr-day-i b { font-weight: 700; }
+#dash-root .jr-muted { color: var(--color-fg-muted); }
+#dash-root .jr-grid-wide { grid-template-columns: repeat(auto-fit, minmax(min(100%, 30rem), 1fr)); }
+#dash-root .jr-dside { display: flex; flex-direction: column; gap: var(--cds-gap-md); }
+#dash-root .jr-chart.jr-small { min-height: 110px; }
+#dash-root .jr-dkpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); gap: var(--cds-gap-md); }
+#dash-root .jr-dk { border-radius: var(--cds-radius); overflow: hidden; border: none; text-align: center; background: var(--color-panel); box-shadow: var(--card-shadow); }
+#dash-root .jr-dk-h { background: linear-gradient(135deg, #0098AA, #007a8a); color: #FFFFFF; font-weight: 700; padding: 10px var(--cds-pad-sm); font-size: var(--cds-font-size-body); letter-spacing: 0.02em; }
+#dash-root .jr-dk .jr-val { margin: var(--cds-pad-sm) 0 0; }
+#dash-root .jr-dk .jr-sub { padding-bottom: var(--cds-pad-sm); }
+#dash-root .jr-ppt { font: inherit; font-size: 0.78rem; font-weight: 600; background: linear-gradient(135deg, #0098AA, #007a8a); color: #FFFFFF; border: none; border-radius: 8px; padding: 8px 16px; cursor: pointer; transition: all 0.15s; box-shadow: 0 2px 6px rgba(0,152,170,0.3); }
+#dash-root .jr-ppt:hover { box-shadow: 0 4px 12px rgba(0,152,170,0.4); transform: translateY(-1px); }
+#dash-root .jr-ppt:disabled { opacity: .6; cursor: progress; transform: none; }
+</style>
+</head>
+<body>
+
+<div id="login-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:100">
+  <div style="background:#fff;padding:32px;border-radius:12px;min-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+    <h2 style="margin:0 0 16px;font-size:1.25rem">KPI Confiabilidad</h2>
+    <div id="login-error" style="color:#dc2626;font-size:.875rem;margin-bottom:8px;display:none"></div>
+    <input id="login-user" placeholder="Usuario" style="width:100%;padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:8px;font-size:.875rem;box-sizing:border-box">
+    <input id="login-pass" type="password" placeholder="Contraseña" style="width:100%;padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:16px;font-size:.875rem;box-sizing:border-box">
+    <button id="login-btn" style="width:100%;padding:10px;background:#0098AA;color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;font-weight:600">Iniciar sesión</button>
+  </div>
+</div>
+
+<div id="dash-root">
+<div class="jr">
+  <header class="jr-head" id="resumen">
+    <div>
+      <h1 class="jr-title">Disponibilidad por flota</h1>
+      <p class="jr-take" id="takeaway" data-source="diario detalle">
+        <span class="t-scope">—</span>: disponibilidad física de <b class="t-df">—</b>,
+        <b class="t-gap">—</b> pp frente a la meta de 70%; disponibilidad mecánica de <b class="t-dm">—</b>.
+        El equipo con más horas NP es <b class="t-eq">—</b>
+        y el sistema que más pesa es <b class="t-sis">—</b> (<b class="t-sispct">—</b> de las horas NP).
+      </p>
+    </div>
+    <div class="jr-filters" id="filtros">
+      <label class="jr-ctrl">Flota <select class="jr-flota" aria-label="Flota" data-source="diario"><option value="JR">JR Jumbos</option><option value="JRS">JRS</option><option value="RB3">RB3</option><option value="PICARROCA">Picarroca</option></select></label>
+      <label class="jr-ctrl">Año <select class="jr-year" aria-label="Año" data-source="diario"></select></label>
+      <label class="jr-ctrl">Modelo <select class="jr-model" aria-label="Modelo" data-source="diario"></select></label>
+      <label class="jr-ctrl">Mes <select class="jr-month" aria-label="Mes" data-source="diario"></select></label>
+      <label class="jr-ctrl">Semana <select class="jr-week" aria-label="Semana" data-source="diario"></select></label>
+      <button class="jr-reset" type="button">Restablecer</button>
+      <button class="jr-ppt" type="button" title="Descargar la pestaña actual como presentación PowerPoint">Descargar PPT</button>
+      <button class="jr-reset" type="button" id="btn-logout" style="margin-left:auto">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <nav class="jr-tabs" role="tablist">
+    <button type="button" role="tab" data-tab="resumen" id="tab-btn-resumen">Resumen</button>
+    <button type="button" role="tab" data-tab="semanal" id="tab-btn-semanal">Vista semanal</button>
+    <button type="button" role="tab" data-tab="desempeno" id="tab-btn-desempeno">Desempeño semanal</button>
+  </nav>
+
+  <div class="jr-page" id="tab-resumen">
+  <div class="jr-sbar" id="r-filtros"><span class="jr-scope">Los filtros de equipo aplican solo a esta pestaña.</span>
+    <span class="jr-ctrl">Equipos
+      <details class="jr-ms jr-ms-eq" data-source="diario"><summary class="jr-ms-sum">Todos</summary>
+        <div class="jr-ms-pop"><div class="jr-ms-list"></div><button type="button" class="jr-reset jr-ms-clear">Limpiar (todos)</button></div>
+      </details></span></div>
+  <section class="jr-tiles" id="kpis" data-source="diario">
+    <div class="jr-tile"><div class="jr-lbl">Disponibilidad física · <span class="sc-lbl">—</span></div>
+      <div class="jr-val dash-skeleton k-df">—</div>
+      <div class="jr-sub">Meta 70% · <span class="k-gap">—</span> pp</div></div>
+    <div class="jr-tile"><div class="jr-lbl">Disponibilidad mecánica · <span class="sc-lbl">—</span></div>
+      <div class="jr-val dash-skeleton k-dm">—</div>
+      <div class="jr-sub">DF + EQAC <span class="k-eq">—</span> pp + Interf. op. <span class="k-io">—</span> pp</div></div>
+    <div class="jr-tile"><div class="jr-lbl">Horas detenidas NP · <span class="sc-lbl">—</span></div>
+      <div class="jr-val dash-skeleton k-np">—</div>
+      <div class="jr-sub"><span class="k-f">—</span> eventos de falla</div></div>
+    <div class="jr-tile"><div class="jr-lbl">MTTR todos los NP · <span class="sc-lbl">—</span></div>
+      <div class="jr-val dash-skeleton k-mttr">—</div>
+      <div class="jr-sub">horas NP por evento NP</div></div>
+    <div class="jr-tile"><div class="jr-lbl">MTBF todos los NP · <span class="sc-lbl">—</span></div>
+      <div class="jr-val dash-skeleton k-mtbf">—</div>
+      <div class="jr-sub">horas disponibles por evento NP</div></div>
+    <div class="jr-tile"><div class="jr-lbl">MTTR fallas + logística · <span class="sc-lbl">—</span></div>
+      <div class="jr-val dash-skeleton k-mttr2">—</div>
+      <div class="jr-sub">h NP mec. + eléc. + espera logística / <span class="k-f2">—</span> fallas mec. + eléc.</div></div>
+    <div class="jr-tile"><div class="jr-lbl">MTBF fallas · <span class="sc-lbl">—</span></div>
+      <div class="jr-val dash-skeleton k-mtbf2">—</div>
+      <div class="jr-sub">horas disponibles / fallas mec. + eléc.</div></div>
+    <div class="jr-tile"><div class="jr-lbl">Relación PL/NP · <span class="sc-lbl">—</span></div>
+      <div class="jr-val dash-skeleton k-plnp">—</div>
+      <div class="jr-sub">Meta ≥ 4,0 (80/20) · h PL <span class="k-plh">—</span> / h NP <span class="k-nph">—</span> (todos los NP)</div></div>
+    <div class="jr-tile"><div class="jr-lbl">Relación PL/NP fallas + logística · <span class="sc-lbl">—</span></div>
+      <div class="jr-val dash-skeleton k-plnp2">—</div>
+      <div class="jr-sub">Meta ≥ 4,0 (80/20) · h PL / <span class="k-nph2">—</span> h NP mec. + eléc. + espera logística</div></div>
+    <div class="jr-tile"><div class="jr-lbl">Relación PL/NP fallas + logística + repuestos · <span class="sc-lbl">—</span></div>
+      <div class="jr-val dash-skeleton k-plnp3">—</div>
+      <div class="jr-sub">Meta ≥ 4,0 (80/20) · h PL / <span class="k-nph3">—</span> h NP mec. + eléc. + espera logística + falta de repuesto</div></div>
+  </section>
+
+  <section class="jr-card" id="indisponibilidad">
+    <h3>Indisponibilidad · <span class="wf-scope">—</span></h3>
+    <p class="jr-note">Cascada desde el tiempo calendario (L. Técnico = 100%) hasta la DF. Izquierda: PL vs NP según la columna Mantenimiento. Derecha: por tipo de pérdida; DMec = DF + Interf. Op + EQAC.</p>
+    <div class="jr-wf-grid">
+      <div class="jr-chart dash-skeleton" id="ch-wf-l" data-source="diario"></div>
+      <div class="jr-chart dash-skeleton" id="ch-wf-r" data-source="diario"></div>
+    </div>
+  </section>
+
+  <section class="jr-grid" id="malos-actores">
+    <div class="jr-card" id="card-ranking">
+      <h3>Malos actores · ranking por horas NP</h3>
+      <p class="jr-note">Ordenado por horas detenidas no programadas en el período filtrado. Haz clic en un equipo para ver sus sistemas.</p>
+      <div class="jr-tbl-wrap" id="ranking" data-source="diario">
+        <table class="jr-tbl" id="tbl-rank">
+          <thead><tr>
+            <th>Equipo</th>
+            <th class="jr-hide-sm">Modelo</th>
+            <th>DF</th>
+            <th>DM</th>
+            <th>Horas NP</th>
+            <th class="jr-hide-sm">Horas PL</th>
+            <th>Eventos</th>
+            <th class="jr-hide-sm">MTTR</th>
+            <th class="jr-hide-sm">MTBF</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="jr-card" id="card-pareto">
+      <h3>Pareto de sistemas · horas NP</h3>
+      <p class="jr-note"><span class="p-scope">—</span> <button class="jr-pick" type="button" hidden></button> · barras: horas NP; etiqueta: % acumulado.</p>
+      <div class="jr-chart dash-skeleton" id="ch-pareto" data-source="detalle"></div>
+    </div>
+  </section>
+
+  <section class="jr-grid" id="jack-knife">
+    <div class="jr-card" id="card-jk-equipo-np">
+      <h3>Jack-knife por equipo · todos los NP</h3>
+      <p class="jr-note">Todas las detenciones no programadas: fallas mecánicas y eléctricas, falta de repuesto, logística, EQAC e interferencias. Eventos NP vs MTTR en escala logarítmica; tamaño = horas NP. Límites: MTTR = horas NP / eventos; eventos = eventos totales / n° de equipos.</p>
+      <div class="jr-legend" id="jk-eqnp-lg"></div>
+      <div class="jr-chart dash-skeleton" id="jk-eqnp" data-source="detalle"></div>
+    </div>
+    <div class="jr-card" id="card-jk-equipo">
+      <h3>Jack-knife por equipo · solo fallas</h3>
+      <p class="jr-note">Solo fallas: tipo de pérdida NP mecánica y NP eléctrica (sin falta de repuesto, EQAC ni interferencias). Fallas vs MTTR en escala logarítmica; tamaño = horas de falla. Límites: MTTR = horas NP totales / fallas totales; fallas = fallas totales / n° de equipos. Curvas punteadas: igual horas detenidas.</p>
+      <div class="jr-legend" id="jk-eq-lg"></div>
+      <div class="jr-chart dash-skeleton" id="jk-eq" data-source="detalle"></div>
+    </div>
+    <div class="jr-card" id="card-jk-comp">
+      <h3>Jack-knife por componente · solo fallas</h3>
+      <p class="jr-note"><span class="jk-scope">—</span>. Mismos criterios, con límites calculados sobre los componentes; se rotulan los de mayor impacto fuera del cuadrante bajo control.</p>
+      <div class="jr-legend" id="jk-comp-lg"></div>
+      <div class="jr-chart dash-skeleton" id="jk-comp" data-source="detalle"></div>
+    </div>
+  </section>
+  </div>
+
+  <div class="jr-page" id="tab-semanal" hidden>
+    <div class="jr-sbar"><span class="jr-scope">Período: <b class="s-scope">—</b><br>El filtro de tipo de pérdida aplica a los gráficos de horas (tipo, sistemas y componentes); la disponibilidad sigue siendo la total.</span>
+      <span class="jr-filters"><span class="jr-ctrl">Equipos
+        <details class="jr-ms jr-ms-seq" data-source="diario"><summary class="jr-ms-sum">Todos</summary>
+          <div class="jr-ms-pop"><div class="jr-ms-list"></div><button type="button" class="jr-reset jr-ms-clear">Limpiar (todos)</button></div>
+        </details></span>
+      <span class="jr-ctrl">Tipo de pérdida
+        <details class="jr-ms" data-source="detalle"><summary class="jr-ms-sum">Todos</summary>
+          <div class="jr-ms-pop"><div class="jr-ms-list"></div><button type="button" class="jr-reset jr-ms-clear">Limpiar (todos)</button></div>
+        </details></span>
+      <button class="jr-reset jr-lastwk" type="button">Ver última semana</button></span></div>
+    <section class="jr-sgrid-top" id="s-kpis">
+      <div class="jr-card" id="card-s-gauge"><h3>Disponibilidad física</h3><p class="jr-note">Marca: meta 70%.</p><div class="jr-chart jr-gauge dash-skeleton" id="s-gauge" data-source="diario"></div></div>
+      <div class="jr-card" id="card-s-gauge-dm"><h3>Disponibilidad mecánica</h3><p class="jr-note">DF + (EQAC + Interf. op.) / h calendario · <span class="s-dm-sub">—</span></p><div class="jr-chart jr-gauge dash-skeleton" id="s-gauge-dm" data-source="diario"></div></div>
+      <div class="jr-sstack">
+        <div class="jr-tile"><div class="jr-lbl">Cantidad total de equipos</div><div class="jr-val dash-skeleton s-neq" data-source="diario">—</div></div>
+        <div class="jr-tile"><div class="jr-lbl">Equipos disponibles promedio</div><div class="jr-val dash-skeleton s-prom" data-source="diario">—</div><div class="jr-sub">horas disponibles / 24 / días</div></div>
+      </div>
+      <div class="jr-card" id="card-s-donut"><h3>Horas según estado</h3><div class="jr-legend" id="s-donut-lg"></div><div class="jr-chart jr-donut dash-skeleton" id="s-donut" data-source="diario"></div></div>
+    </section>
+    <section class="jr-grid">
+      <div class="jr-card" id="card-s-combo"><h3>Disponibilidad y equipos disponibles <span class="s-combo-t">por día</span></h3>
+        <p class="jr-note">Barras: disponibilidad física (rojo bajo meta 70%). Línea punteada: disponibilidad mecánica. Línea continua: equipos disponibles promedio (eje derecho).</p>
+        <div class="jr-legend" id="s-combo-lg"></div>
+        <div class="jr-chart dash-skeleton" id="s-combo" data-source="diario"></div></div>
+      <div class="jr-card" id="card-s-tipos"><h3>Horas por tipo de detención</h3><p class="jr-note s-tp-note" hidden></p>
+        <p class="jr-note">Todos los tipos de pérdida, separados en NP y PL según la columna Mantenimiento.</p>
+        <div class="jr-legend" id="s-tipos-lg"></div>
+        <div class="jr-chart dash-skeleton" id="s-tipos" data-source="detalle"></div></div>
+    </section>
+    <section class="jr-grid">
+      <div class="jr-card" id="card-s-stack"><h3>Horas de detención por sistema y disponibilidad</h3><p class="jr-note s-tp-note" hidden></p>
+        <p class="jr-note">Por equipo, ordenado de menor a mayor disponibilidad. Incluye NP y PL; los 7 sistemas con más horas tienen color propio.</p>
+        <div class="jr-legend" id="s-stack-lg"></div>
+        <div class="jr-chart dash-skeleton" id="s-stack" data-source="diario detalle"></div></div>
+      <div class="jr-card" id="card-s-tree"><h3>Distribución de horas NP por componente</h3><p class="jr-note s-tp-note" hidden></p>
+        <p class="jr-note">Tamaño: horas NP. Color: sistema principal del componente (mismos colores que el gráfico de sistemas).</p>
+        <div class="jr-chart dash-skeleton" id="s-tree" data-source="detalle"></div></div>
+    </section>
+  </div>
+  <div class="jr-page" id="tab-desempeno" hidden>
+    <div class="jr-sbar"><h2 class="jr-title d-title">Indicadores de desempeño</h2>
+      <span class="jr-filters"><span class="jr-scope">Período: <b class="d-scope">—</b></span><button class="jr-reset jr-lastwk2" type="button">Ver última semana</button></span></div>
+    <section class="jr-card" id="card-d-notes"><h3>Detalle diario de detenciones NP</h3>
+      <p class="jr-note">Solo detenciones no programadas (NP): por día, equipos con 4 h NP o más (máx. 6 por día), según los avisos NP del registro. En rojo: 12 h NP o más.</p>
+      <div class="jr-days dash-skeleton" id="d-notes" data-source="notas diario"></div></section>
+    <section class="jr-grid jr-grid-wide">
+      <div class="jr-card" id="card-d-combo"><h3>Disponibilidad, % indisponibilidad EQAC y equipos disponibles</h3>
+        <p class="jr-note">Barra: DF con la indisponibilidad por EQAC apilada encima. Línea: equipos disponibles promedio (eje derecho).</p>
+        <div class="jr-legend" id="d-combo-lg"></div>
+        <div class="jr-chart dash-skeleton" id="d-combo" data-source="diario"></div></div>
+      <div class="jr-card" id="card-d-eq"><h3>Disponibilidad física por equipo</h3>
+        <p class="jr-note">Flota en ámbar; equipos bajo la meta de 70% en rojo.</p>
+        <div class="jr-chart dash-skeleton" id="d-eq" data-source="diario"></div></div>
+    </section>
+    <section class="jr-grid jr-grid-wide">
+      <div class="jr-card" id="card-d-stack"><h3>Tiempo indisponible por día</h3>
+        <p class="jr-note">Horas detenidas: NP falla (mecánica + eléctrica), NP no falla (repuestos, EQAC, interferencias, logística) y PL.</p>
+        <div class="jr-legend" id="d-stack-lg"></div>
+        <div class="jr-chart dash-skeleton" id="d-stack" data-source="detalle"></div></div>
+      <div class="jr-dside">
+        <div class="jr-card" id="card-d-flota"><h3>Disponibilidad física por flota</h3>
+          <div class="jr-chart jr-small dash-skeleton" id="d-flota" data-source="diario"></div></div>
+        <div class="jr-dkpis" data-source="diario">
+          <div class="jr-dk"><div class="jr-dk-h">DF <span class="d-wk">—</span></div><div class="jr-val dash-skeleton d-df">—</div></div>
+          <div class="jr-dk"><div class="jr-dk-h">Relación PL / NP total</div><div class="jr-val dash-skeleton d-plnp">—</div><div class="jr-sub">razón PL/NP <span class="d-plnp-r">—</span> · meta ≥ 4,0</div></div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</div>
+
+<!-- PPTX generator (standalone, no dependencies) -->
+<script>
+(() => {
+  const EMU = 914400;
+  const CX = 12192000, CY = 6858000;
+  const enc = new TextEncoder();
+  const crc32 = (() => { const t = new Int32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c; } return d => { let c = -1; for (let i = 0; i < d.length; i++) c = t[(c ^ d[i]) & 0xFF] ^ (c >>> 8); return (c ^ -1) >>> 0; }; })();
+  const u16 = (v) => [v & 0xFF, (v >> 8) & 0xFF];
+  const u32 = (v) => [v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF];
+  function zip(files) {
+    const parts = []; const dir = []; let off = 0;
+    for (const { name, data } of files) {
+      const n = enc.encode(name); const c = crc32(data);
+      const lh = new Uint8Array([0x50, 0x4B, 3, 4, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...u32(c), ...u32(data.length), ...u32(data.length), ...u16(n.length), 0, 0, ...n]);
+      parts.push(lh, data);
+      const dh = new Uint8Array([0x50, 0x4B, 1, 2, 20, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...u32(c), ...u32(data.length), ...u32(data.length), ...u16(n.length), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...u32(off)]);
+      dir.push(new Uint8Array([...dh, ...n]));
+      off += lh.length + data.length;
+    }
+    const dirBytes = dir.reduce((a, b) => { const c = new Uint8Array(a.length + b.length); c.set(a); c.set(b, a.length); return c; }, new Uint8Array(0));
+    const eocd = new Uint8Array([0x50, 0x4B, 5, 6, 0, 0, 0, 0, ...u16(dir.length), ...u16(dir.length), ...u32(dirBytes.length), ...u32(off), 0, 0]);
+    const out = new Uint8Array(off + dirBytes.length + eocd.length);
+    let p = 0; for (const b of parts) { out.set(b, p); p += b.length; }
+    out.set(dirBytes, p); out.set(eocd, p + dirBytes.length);
+    return out;
+  }
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  function slideXml(s, imgRid) {
+    let body = '';
+    if (s.title) body += shape(457200, 274638, CX - 914400, 630000, txBody(s.title, 2400, true));
+    if (s.subtitle) body += shape(457200, 904638, CX - 914400, 460000, txBody(s.subtitle, 1200));
+    let y = s.subtitle ? 1400000 : 1000000;
+    if (s.kpis && s.kpis.length) {
+      const cols = Math.min(5, s.kpis.length); const w = Math.floor((CX - 914400) / cols); const h = 720000;
+      for (let i = 0; i < s.kpis.length; i++) {
+        const k = s.kpis[i]; const col = i % cols; const row = Math.floor(i / cols);
+        const x = 457200 + col * w; const ky = y + row * (h + 80000);
+        const valColor = k.bad ? 'C13832' : k.good ? '0098AA' : '404040';
+        const runs = `<a:r><a:rPr lang="es-CL" sz="900" dirty="0"><a:solidFill><a:srgbClr val="7F7F7F"/></a:solidFill></a:rPr><a:t>${esc(k.h)}</a:t></a:r><a:br/><a:r><a:rPr lang="es-CL" sz="2000" b="1" dirty="0"><a:solidFill><a:srgbClr val="${valColor}"/></a:solidFill></a:rPr><a:t>${esc(k.v)}</a:t></a:r><a:br/><a:r><a:rPr lang="es-CL" sz="800" dirty="0"><a:solidFill><a:srgbClr val="7F7F7F"/></a:solidFill></a:rPr><a:t>${esc(k.s)}</a:t></a:r>`;
+        body += shape(x, ky, w - 80000, h, `<a:bodyPr wrap="square" lIns="72000" tIns="54000" rIns="72000" bIns="36000" anchor="ctr"/><a:lstStyle/><a:p><a:pPr algn="ctr"/>${runs}</a:p>`, '0098AA', 12700);
+      }
+      y += (Math.ceil(s.kpis.length / cols)) * (h + 80000) + 60000;
+    }
+    if (s.cols && s.cols.length) {
+      const n = Math.min(7, s.cols.length); const w = Math.floor((CX - 914400) / n); const maxH = CY - y - 500000;
+      for (let i = 0; i < n; i++) {
+        const c = s.cols[i]; const x = 457200 + i * w;
+        let runs = `<a:r><a:rPr lang="es-CL" sz="900" b="1" dirty="0"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:rPr><a:t>${esc(c.h)}</a:t></a:r>`;
+        let bodyRuns = '';
+        for (const line of (c.items || [])) {
+          let lr = '';
+          for (const seg of line) {
+            const clr = seg.c || '404040';
+            lr += `<a:r><a:rPr lang="es-CL" sz="800"${seg.b ? ' b="1"' : ''} dirty="0"><a:solidFill><a:srgbClr val="${clr}"/></a:solidFill></a:rPr><a:t>${esc(seg.t)}</a:t></a:r>`;
+          }
+          bodyRuns += `<a:p><a:pPr marL="0" indent="0"/>${lr}</a:p>`;
+        }
+        const hdr = shape(x, y, w - 40000, 360000, `<a:bodyPr wrap="square" lIns="54000" tIns="36000" rIns="54000" bIns="36000" anchor="ctr"/><a:lstStyle/><a:p><a:pPr algn="ctr"/>${runs}</a:p>`, null, 0, '0098AA');
+        const bd = shape(x, y + 360000, w - 40000, Math.min(maxH - 360000, 4800000), `<a:bodyPr wrap="square" lIns="54000" tIns="36000" rIns="54000" bIns="36000" anchor="t"/><a:lstStyle/>${bodyRuns || '<a:p/>'}`, '0098AA', 9525);
+        body += hdr + bd;
+      }
+    }
+    if (s.table) {
+      const { head, rows, colors } = s.table;
+      const nc = head.length, nr = Math.min(rows.length, 12);
+      const tw = CX - 914400, rh = 260000, hh = 300000;
+      const cw = Math.floor(tw / nc);
+      let txml = `<a:tbl><a:tblPr firstRow="1" bandRow="1"><a:tblStyle val="{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"/></a:tblPr><a:tblGrid>`;
+      for (let c = 0; c < nc; c++) txml += `<a:gridCol w="${cw}"/>`;
+      txml += '</a:tblGrid>';
+      txml += '<a:tr h="' + hh + '">';
+      for (let c = 0; c < nc; c++) txml += `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="es-CL" sz="900" b="1" dirty="0"/><a:t>${esc(head[c])}</a:t></a:r></a:p></a:txBody><a:tcPr><a:solidFill><a:srgbClr val="0098AA"/></a:solidFill></a:tcPr></a:tc>`;
+      txml += '</a:tr>';
+      for (let r = 0; r < nr; r++) {
+        txml += `<a:tr h="${rh}">`;
+        for (let c = 0; c < nc; c++) {
+          const clr = (colors && colors[r] && colors[r][c]) || '404040';
+          txml += `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="es-CL" sz="800" dirty="0"><a:solidFill><a:srgbClr val="${clr}"/></a:solidFill></a:rPr><a:t>${esc(rows[r][c])}</a:t></a:r></a:p></a:txBody><a:tcPr/></a:tc>`;
+        }
+        txml += '</a:tr>';
+      }
+      txml += '</a:tbl>';
+      body += `<p:sp><p:nvSpPr><p:cNvPr id="90" name="Table"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="457200" y="${y}"/><a:ext cx="${tw}" cy="${hh + nr * rh}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody></p:sp>`;
+      body += `<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><mc:Choice Requires="a14"><p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="91" name="Tabla"/><p:cNvGraphicFramePr><a:graphicFrameLocks noGrp="1"/></p:cNvGraphicFramePr><p:nvPr/></p:nvGraphicFramePr><p:xfrm><a:off x="457200" y="${y}"/><a:ext cx="${tw}" cy="${hh + nr * rh}"/></p:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table">${txml}</a:graphicData></a:graphic></p:graphicFrame></mc:Choice></mc:AlternateContent>`;
+    }
+    if (s.img && imgRid) {
+      const maxW = CX - 914400, maxH = CY - y - 500000;
+      const sc = Math.min(maxW / s.img.w, maxH / s.img.h, 1.8);
+      const iw = Math.round(s.img.w * sc * EMU / 96), ih = Math.round(s.img.h * sc * EMU / 96);
+      body += pic(imgRid, 457200, y, iw, ih);
+    }
+    if (s.footer) body += shape(457200, CY - 400000, CX - 914400, 300000, txBody(s.footer, 700, false, '999999'));
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>${body}</p:spTree></p:cSld></p:sld>`;
+  }
+  function shape(x, y, cx, cy, bodyXml, lineClr, lineW, fillClr) {
+    let fill = fillClr ? `<a:solidFill><a:srgbClr val="${fillClr}"/></a:solidFill>` : '<a:noFill/>';
+    let line = lineClr ? `<a:ln w="${lineW || 12700}"><a:solidFill><a:srgbClr val="${lineClr}"/></a:solidFill><a:round/></a:ln>` : '';
+    return `<p:sp><p:nvSpPr><p:cNvPr id="${10 + Math.random() * 9e8 | 0}" name=""/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val 3000"/></a:avLst></a:prstGeom>${fill}${line}</p:spPr><p:txBody>${bodyXml}</p:txBody></p:sp>`;
+  }
+  function pic(rId, x, y, cx, cy) {
+    return `<p:pic><p:nvPicPr><p:cNvPr id="${10 + Math.random() * 9e8 | 0}" name="img"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="${rId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;
+  }
+  function txBody(text, sz, bold, clr) {
+    const c = clr || '404040';
+    return `<a:bodyPr wrap="square" lIns="91440" tIns="45720" rIns="91440" bIns="45720"/><a:lstStyle/><a:p><a:r><a:rPr lang="es-CL" sz="${sz}"${bold ? ' b="1"' : ''} dirty="0"><a:solidFill><a:srgbClr val="${c}"/></a:solidFill></a:rPr><a:t>${esc(text)}</a:t></a:r></a:p>`;
+  }
+  function build(slides) {
+    const files = [];
+    const ct = (ext, type) => `<Override PartName="${ext}" ContentType="${type}"/>`;
+    let types = `<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/>`;
+    types += ct('/ppt/presentation.xml', 'application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml');
+    let presRels = '', presSlides = '', imgIdx = 1;
+    for (let i = 0; i < slides.length; i++) {
+      const s = slides[i]; const si = i + 1;
+      let sRels = `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">`;
+      let imgRid = null;
+      if (s.img && s.img.data) {
+        const imgName = `image${imgIdx++}.png`;
+        files.push({ name: `ppt/media/${imgName}`, data: s.img.data });
+        imgRid = `rImg${si}`;
+        sRels += `<Relationship Id="${imgRid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${imgName}"/>`;
+      }
+      sRels += '</Relationships>';
+      const xml = slideXml(s, imgRid);
+      files.push({ name: `ppt/slides/slide${si}.xml`, data: enc.encode(xml) });
+      files.push({ name: `ppt/slides/_rels/slide${si}.xml.rels`, data: enc.encode(sRels) });
+      types += ct(`/ppt/slides/slide${si}.xml`, 'application/vnd.openxmlformats-officedocument.presentationml.slide+xml');
+      presRels += `<Relationship Id="rId${si}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${si}.xml"/>`;
+      presSlides += `<p:sldId id="${256 + i}" r:id="rId${si}"/>`;
+    }
+    types += '</Types>';
+    files.push({ name: '[Content_Types].xml', data: enc.encode(types) });
+    files.push({ name: '_rels/.rels', data: enc.encode(`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/></Relationships>`) });
+    files.push({ name: 'ppt/_rels/presentation.xml.rels', data: enc.encode(`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${presRels}</Relationships>`) });
+    files.push({ name: 'ppt/presentation.xml', data: enc.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:sldMasterIdLst/><p:sldIdLst>${presSlides}</p:sldIdLst><p:sldSz cx="${CX}" cy="${CY}" type="custom"/><p:notesSz cx="${CY}" cy="${CX}"/></p:presentation>`) });
+    return zip(files);
+  }
+  window.jrPptx = { build };
+})();
+</script>
+
+<!-- State management + data loading -->
+<script>
+let STATE = { diario: null, detalle: null, notas: null };
+let PARAMS = { anio: null, mes: null, semana: null, modelo: 'TODOS', equipo: null, tab: 'resumen', r_equipos: [], s_equipos: [], s_tipos: [], heat: null };
+let onDataCallbacks = [];
+
+const dash = {
+  data: (src) => {
+    const d = STATE[src];
+    if (!d) return { status: 'loading' };
+    return { status: 'ok', data: d };
+  },
+  params: () => ({...PARAMS}),
+  setParams: (obj) => {
+    Object.assign(PARAMS, obj);
+    onDataCallbacks.forEach(cb => cb());
+  },
+  resetParams: () => {
+    PARAMS = { anio: null, mes: null, semana: null, modelo: 'TODOS', equipo: null, tab: PARAMS.tab, r_equipos: [], s_equipos: [], s_tipos: [], heat: null };
+    onDataCallbacks.forEach(cb => cb());
+  },
+  setLink: (hash) => { location.hash = hash; },
+  onData: (cb) => { onDataCallbacks.push(cb); }
+};
+
+async function loadData() {
+  const token = localStorage.getItem('token');
+  const headers = { 'Authorization': 'Bearer ' + token };
+  try {
+    const [diario, detalle, notas] = await Promise.all([
+      fetch('/api/ds-diario', {headers}).then(r => r.json()),
+      fetch('/api/ds-detalle', {headers}).then(r => r.json()),
+      fetch('/api/ds-notas', {headers}).then(r => r.json())
+    ]);
+    STATE.diario = diario;
+    STATE.detalle = detalle;
+    STATE.notas = notas;
+    onDataCallbacks.forEach(cb => cb());
+  } catch(e) {
+    console.error('Error loading data:', e);
+  }
+}
+
+// Login
+async function doLogin() {
+  const user = document.getElementById('login-user').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  if (!user || !pass) { errEl.textContent = 'Ingrese usuario y contraseña'; errEl.style.display = 'block'; return; }
+  try {
+    const res = await fetch('/api/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username:user, password:pass}) });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || 'Error de autenticación'; errEl.style.display = 'block'; return; }
+    localStorage.setItem('token', data.token);
+    document.getElementById('login-overlay').style.display = 'none';
+    loadData();
+  } catch(e) { errEl.textContent = 'Error de conexión'; errEl.style.display = 'block'; }
+}
+document.getElementById('login-btn').addEventListener('click', doLogin);
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+if (localStorage.getItem('token')) {
+  document.getElementById('login-overlay').style.display = 'none';
+  loadData();
+}
+
+// Logout
+document.getElementById('btn-logout').addEventListener('click', () => {
+  localStorage.removeItem('token');
+  location.reload();
+});
+</script>
+
+<!-- Main dashboard logic -->
+<script>
+(() => {
+  const META = 0.70;
+  const META_PLNP = 4.0;
+  const DC = ['#0098AA', '#F4AA00', '#E55302', '#4BACC6', '#F79646', '#0000FF', '#404040', '#C13832'];
+  const SYS = ['#0098AA', '#C13832', '#F4AA00', '#E55302', '#4BACC6', '#F79646', '#0000FF'];
+  const LIGHT = ['#F4AA00', '#D0D0D0', '#F79646', '#4BACC6'];
+  const ink = (c) => (LIGHT.includes(String(c).toUpperCase()) ? '#404040' : '#FFFFFF');
+  const L = d3.formatLocale({ decimal: ',', thousands: '.', grouping: [3], currency: ['$', ''] });
+  const pct = L.format('.1%'), pct0 = L.format('.0%'), int = L.format(',.0f'), one = L.format(',.1f');
+  const signed = (v) => (v > 0 ? '+' : v < 0 ? '\u2212' : '') + one(Math.abs(v));
+  const fmtDate = (s) => d3.utcFormat('%d-%m-%Y')(new Date(s + 'T00:00:00Z'));
+  const $ = (s) => document.querySelector('#dash-root ' + s);
+  const $$ = (s) => Array.from(document.querySelectorAll('#dash-root ' + s));
+  const MODELS = ['DL421', 'M7C', 'M4C'];
+  const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  const monthSel = $('.jr-month'), flotaSel = $('.jr-flota');
+  const yearSel = $('.jr-year'), modelSel = $('.jr-model'), weekSel = $('.jr-week');
+  const pick = $('.jr-pick');
+
+  modelSel.replaceChildren(new Option('Todos', 'TODOS'), ...MODELS.map((m) => new Option(m, m)));
+  flotaSel.addEventListener('change', () => dash.setParams({ flota: flotaSel.value, modelo: 'TODOS', mes: null, semana: null, equipo: null, r_equipos: [], s_equipos: [] }));
+  yearSel.addEventListener('change', () => dash.setParams({ anio: +yearSel.value, mes: null, semana: null, equipo: null }));
+  monthSel.addEventListener('change', () => dash.setParams({ mes: monthSel.value ? +monthSel.value : null, semana: null }));
+  modelSel.addEventListener('change', () => dash.setParams({ modelo: modelSel.value, equipo: null }));
+  weekSel.addEventListener('change', () => dash.setParams({ semana: weekSel.value === '' ? null : +weekSel.value }));
+  $('.jr-reset').addEventListener('click', () => dash.resetParams());
+  let lastWeek = null;
+  const sEqBox = $('#tab-semanal .jr-ms-seq'), sEqList = sEqBox.querySelector('.jr-ms-list'), sEqSum = sEqBox.querySelector('.jr-ms-sum');
+  sEqList.addEventListener('change', () => dash.setParams({ s_equipos: Array.from(sEqList.querySelectorAll('input:checked')).map((c) => c.value) }));
+  sEqBox.querySelector('.jr-ms-clear').addEventListener('click', () => { dash.setParams({ s_equipos: [] }); sEqBox.open = false; });
+  document.addEventListener('click', (ev) => { if (sEqBox.open && !sEqBox.contains(ev.target)) sEqBox.open = false; });
+  let rEqSel = null;
+  {
+    const l = $('#tab-resumen .jr-ms-list'), bx = $('#tab-resumen .jr-ms');
+    l.addEventListener('change', () => dash.setParams({ r_equipos: Array.from(l.querySelectorAll('input:checked')).map((c) => c.value), equipo: null }));
+    $('#tab-resumen .jr-ms-clear').addEventListener('click', () => { dash.setParams({ r_equipos: [] }); bx.open = false; });
+    document.addEventListener('click', (ev) => { if (bx.open && !bx.contains(ev.target)) bx.open = false; });
+  }
+  const msBox = $('#tab-semanal .jr-ms:not(.jr-ms-seq)'), msList = msBox.querySelector('.jr-ms-list'), msSum = msBox.querySelector('.jr-ms-sum');
+  msList.addEventListener('change', () => dash.setParams({ s_tipos: Array.from(msList.querySelectorAll('input:checked')).map((c) => c.value) }));
+  msBox.querySelector('.jr-ms-clear').addEventListener('click', () => { dash.setParams({ s_tipos: [] }); msBox.open = false; });
+  document.addEventListener('click', (ev) => { if (msBox.open && !msBox.contains(ev.target)) msBox.open = false; });
+  $$('.jr-tabs button').forEach((bt) => bt.addEventListener('click', () => { dash.setParams({ tab: bt.dataset.tab }); dash.setLink('tab-' + bt.dataset.tab); }));
+  $('.jr-lastwk').addEventListener('click', () => { if (lastWeek != null) dash.setParams({ mes: null, semana: lastWeek }); });
+  { const h = location.hash.slice(1); if (['tab-semanal', 'tab-resumen', 'tab-desempeno'].includes(h)) dash.setParams({ tab: h.slice(4) }); }
+  $('.jr-lastwk2').addEventListener('click', () => { if (lastWeek != null) dash.setParams({ mes: null, semana: lastWeek }); });
+  pick.addEventListener('click', () => dash.setParams({ equipo: null }));
+  $('#tbl-rank').addEventListener('click', (ev) => {
+    const tr = ev.target.closest('tr[data-key]');
+    if (!tr) return;
+    dash.setParams({ equipo: dash.params().equipo === tr.dataset.key ? null : tr.dataset.key });
+  });
+
+  const fail = (el) => { el.classList.remove('dash-skeleton'); el.replaceChildren(); const d = document.createElement('div'); d.className = 'jr-fail'; d.textContent = 'Failed to load'; el.append(d); };
+  const tipFor = (box) => { let t = box.querySelector('.jr-tip'); if (!t) { t = document.createElement('div'); t.className = 'jr-tip'; box.append(t); } return t; };
+  const showTip = (box, tip, x, y, title, lines) => {
+    tip.replaceChildren();
+    const h = document.createElement('div'); h.className = 't'; h.textContent = title; tip.append(h);
+    for (const [color, label, val] of lines) {
+      const r = document.createElement('div');
+      if (color) { const s = document.createElement('span'); s.className = 'jr-sw'; s.style.background = color; r.append(s); }
+      r.append(label + ': ' + val); tip.append(r);
+    }
+    tip.style.display = 'block';
+    tip.style.left = Math.max(0, Math.min(box.clientWidth - tip.offsetWidth, x + 12)) + 'px';
+    tip.style.top = Math.max(0, y - tip.offsetHeight - 8) + 'px';
+  };
+  const textW = (svg, s) => { const t = svg.append('text').text(s); const w = t.node().getComputedTextLength(); t.remove(); return w; };
+  const cleanAxis = (g) => g.attr('font-size', null).attr('font-family', null).call((g) => g.select('.domain').style('stroke', 'var(--cds-chart-axis)')).call((g) => g.selectAll('.tick line').style('stroke', 'var(--cds-chart-grid)'));
+  const empty = (box, msg) => { box.classList.remove('dash-skeleton'); box.replaceChildren(); const d = document.createElement('div'); d.className = 'jr-fail'; d.style.setProperty('--x', '0'); d.textContent = msg; d.classList.add('jr-empty'); box.append(d); };
+
+  const agg = (rows) => {
+    const o = { cal: 0, det: 0, np: 0, pl: 0, eqac: 0, io: 0, f: 0 };
+    for (const r of rows) { o.cal += +r.h_cal; o.det += +r.h_det; o.np += +r.h_np; o.pl += +r.h_pl; o.eqac += +r.c_eqac; o.io += +r.c_iop; o.f += +r.fallas_np; }
+    o.df = o.cal ? 1 - o.det / o.cal : null;
+    o.dm = o.cal ? o.df + (o.eqac + o.io) / o.cal : null;
+    o.mttr = o.f ? o.np / o.f : null;
+    o.mtbf = o.f ? (o.cal - o.det) / o.f : null;
+    return o;
+  };
+  const byWeek = (rows) => {
+    const g = d3.group(rows, (r) => +r.semana);
+    return Array.from(g, ([semana, v]) => ({ semana, inicio: d3.min(v, (r) => r.fecha), ...agg(v) })).filter((d) => d.cal > 0).sort((a, b) => a.semana - b.semana);
+  };
+
+  function drawTable(rows, sel) {
+    const tb = $('#tbl-rank tbody'); tb.replaceChildren();
+    for (const r of rows) {
+      const tr = document.createElement('tr'); tr.dataset.key = r.equipo;
+      if (sel === r.equipo) tr.classList.add('sel');
+      const cells = [[r.equipo], [r.modelo, 'jr-hide-sm'], [r.df == null ? '\u2014' : pct(r.df), r.df < META ? 'jr-bad' : 'jr-good'], [r.dm == null ? '\u2014' : pct(r.dm)], [one(r.np)], [one(r.pl), 'jr-hide-sm'], [int(r.f)], [r.mttr == null ? '\u2014' : one(r.mttr), 'jr-hide-sm'], [r.mtbf == null ? '\u2014' : one(r.mtbf), 'jr-hide-sm']];
+      for (const [t, c] of cells) { const td = document.createElement('td'); td.textContent = t; if (c) td.className = c; tr.append(td); }
+      tb.append(tr);
+    }
+  }
+
+  function drawPareto(list) {
+    const box = $('#ch-pareto'); box.classList.remove('dash-skeleton');
+    box.querySelectorAll('svg, .jr-fail').forEach((n) => n.remove());
+    if (!list.length) return empty(box, 'Sin horas NP en este per\u00edodo');
+    list = list.slice(0, 10);
+    const W = box.clientWidth;
+    const svg = d3.select(box).append('svg').attr('width', '100%');
+    const labW = d3.max(list, (d) => textW(svg, d.sistema)) || 60;
+    const endW = textW(svg, '0.000 h \u00b7 100%') + 8;
+    const m = { t: 4, r: endW, b: 4, l: labW + 10 };
+    const rowH = 24, H = m.t + m.b + rowH * list.length;
+    svg.attr('viewBox', `0 0 ${W} ${H}`);
+    const y = d3.scaleBand(list.map((d) => d.sistema), [m.t, H - m.b]).padding(0.25);
+    const x = d3.scaleLinear([0, d3.max(list, (d) => d.h) || 1], [m.l, Math.max(m.l + 10, W - m.r)]);
+    const tip = tipFor(box);
+    const g = svg.append('g').selectAll('g').data(list).join('g');
+    g.append('text').attr('x', m.l - 8).attr('y', (d) => y(d.sistema) + y.bandwidth() / 2 + 4).attr('text-anchor', 'end').text((d) => d.sistema);
+    g.append('rect').attr('x', m.l).attr('y', (d) => y(d.sistema)).attr('height', y.bandwidth()).attr('width', (d) => Math.max(1, x(d.h) - m.l)).attr('rx', 4)
+      .style('fill', (d) => (d.acum - d.pct < 0.8 ? DC[0] : '#D0D0D0'))
+      .on('pointermove', (ev, d) => { const [px, py] = d3.pointer(ev, box); showTip(box, tip, px, py, d.sistema, [[null, 'Horas NP', one(d.h)], [null, 'Eventos', int(d.ev)], [null, '% del total', pct(d.pct)], [null, '% acumulado', pct(d.acum)]]); })
+      .on('pointerleave', () => { tip.style.display = 'none'; });
+    g.append('text').attr('x', (d) => x(d.h) + 6).attr('y', (d) => y(d.sistema) + y.bandwidth() / 2 + 4).text((d) => int(d.h) + ' h \u00b7 ' + pct0(d.acum));
+  }
+
+  const heatRows = (rows) => {
+    const out = [];
+    for (const [equipo, m] of d3.group(rows, (r) => r.equipo, (r) => +r.semana)) for (const [semana, v] of m) {
+      out.push({ equipo, semana, h_cal: d3.sum(v, (r) => +r.h_cal), h_det: d3.sum(v, (r) => +r.h_det), h_np: d3.sum(v, (r) => +r.h_np), h_pl: d3.sum(v, (r) => +r.h_pl), h_eqac: d3.sum(v, (r) => +r.c_eqac), h_io: d3.sum(v, (r) => +r.c_iop) });
+    }
+    return out;
+  };
+
+  function wf(box, steps) {
+    box.querySelectorAll('svg').forEach((n) => n.remove());
+    const W = box.clientWidth;
+    const svg = d3.select(box).append('svg').attr('width', '100%');
+    const labW = d3.max(steps, (s) => textW(svg, s.label)) + 14;
+    const rowH = 34, gapG = 10;
+    let yy = 6, prevG = null;
+    for (const s of steps) { if (prevG !== null && s.group !== prevG) yy += gapG; s.y = yy; yy += rowH; prevG = s.group; }
+    const H = yy + 6;
+    svg.attr('viewBox', `0 0 ${W} ${H}`);
+    const endW = textW(svg, '100,0%') + 10;
+    const x = d3.scaleLinear([0, 1], [labW, Math.max(labW + 40, W - endW - 46)]);
+    svg.append('line').attr('x1', x(0)).attr('x2', x(0)).attr('y1', 0).attr('y2', H).style('stroke', 'var(--cds-chart-axis)');
+    let cur = 1;
+    for (const s of steps) {
+      if (s.kind === 'total') { s.a = 0; s.b = s.v; cur = s.v; } else { s.a = cur - s.v; s.b = cur; cur -= s.v; }
+    }
+    const groups = d3.groups(steps.filter((s) => s.box), (s) => s.group);
+    for (const [g, list] of groups) {
+      const y0 = list[0].y - 4, y1 = list[list.length - 1].y + rowH - 4 + 4;
+      const col = list[0].box;
+      svg.append('rect').attr('x', 2).attr('y', y0).attr('width', W - 4).attr('height', y1 - y0).attr('rx', 6).attr('fill', 'none').style('stroke', col).attr('stroke-width', 1.5).attr('stroke-dasharray', '6 4');
+      const sum = d3.sum(list, (s) => s.v);
+      svg.append('text').attr('x', W - 10).attr('y', y1 - 8).attr('text-anchor', 'end').style('fill', col).style('font-weight', 600).text('\u03a3 ' + pct(sum));
+    }
+    const tip = tipFor(box);
+    steps.forEach((s, i) => {
+      const bh = s.kind === 'total' ? rowH - 8 : rowH - 14, by = s.y + (rowH - 8 - bh) / 2;
+      svg.append('text').attr('x', labW - 10).attr('y', s.y + (rowH - 8) / 2 + 4).attr('text-anchor', 'end').style('fill', 'var(--color-fg)').style('font-weight', s.kind === 'total' ? 600 : null).text(s.label);
+      const w = Math.max(1, x(s.b) - x(s.a));
+      svg.append('rect').attr('x', x(s.a)).attr('y', by).attr('width', w).attr('height', bh).attr('rx', 3).style('fill', s.color)
+        .on('pointermove', (ev) => { const [px, py] = d3.pointer(ev, box); showTip(box, tip, px, py, s.label, [[null, '% del L. t\u00e9cnico', pct(s.v)], [null, 'Horas', int(s.h)]]); })
+        .on('pointerleave', () => { tip.style.display = 'none'; });
+      const lbl = pct(s.v);
+      const inside = w > textW(svg, lbl) + 10 && s.kind !== 'total';
+      svg.append('text').attr('x', inside ? x(s.a) + w / 2 : x(s.b) + 6).attr('y', s.y + (rowH - 8) / 2 + 4).attr('text-anchor', inside ? 'middle' : 'start')
+        .style('fill', inside ? ink(s.color) : 'var(--color-fg)').style('font-weight', 600).text(lbl);
+      const nx = steps[i + 1];
+      if (nx) { const lx = x(s.kind === 'total' ? s.b : s.a); svg.append('line').attr('x1', lx).attr('x2', lx).attr('y1', by + bh).attr('y2', nx.y + 4).style('stroke', 'var(--cds-chart-grid)'); }
+    });
+    box.style.minHeight = H + 'px';
+  }
+  function drawWf(rows, scope) {
+    const boxL = $('#ch-wf-l'), boxR = $('#ch-wf-r');
+    boxL.classList.remove('dash-skeleton'); boxR.classList.remove('dash-skeleton');
+    $('.wf-scope').textContent = scope;
+    const cal = d3.sum(rows, (r) => +r.h_cal);
+    if (!cal) { empty(boxL, 'Sin datos para estos filtros'); empty(boxR, 'Sin datos para estos filtros'); return; }
+    boxL.querySelectorAll('.jr-fail').forEach((n) => n.remove()); boxR.querySelectorAll('.jr-fail').forEach((n) => n.remove());
+    const H = (f) => d3.sum(rows, (r) => +r[f]);
+    const det = H('h_det'), tot = { label: 'L. T\u00e9cnico', kind: 'total', v: 1, h: cal, color: DC[0], group: 't0' };
+    const RED = '#C13832', ORG = 'var(--color-warn)';
+    const LL = (label, f, group, box, color) => ({ label, kind: 'loss', v: H(f) / cal, h: H(f), group, box, color });
+    wf(boxL, [tot, LL('PL', 'h_pl', 'pl', RED, DC[0]), LL('NP', 'h_np', 'np', ORG, DC[0]), { label: 'DF', kind: 'total', v: 1 - det / cal, h: cal - det, color: DC[0], group: 't2' }]);
+    const dmH = cal - det + H('c_iop') + H('c_eqac');
+    const r = [tot,
+      LL('PMatriz', 'c_pmatriz', 'pl', RED, DC[0]), LL('BK', 'c_bk', 'pl', RED, DC[0]), LL('Mant. Mayor', 'c_mmayor', 'pl', RED, DC[0]),
+      LL('Falta de Rpto', 'c_frep', 'np', ORG, DC[0]), LL('NP Activo', 'c_npact', 'np', ORG, DC[0]), LL('Log\u00edstica', 'c_log', 'np', ORG, DC[0]), LL('Interf. Mtto', 'c_imtto', 'np', ORG, DC[0])];
+    if (H('c_otros') > 0) r.push(LL('Otros', 'c_otros', 'np', ORG, DC[0]));
+    r.push({ label: 'DMec', kind: 'total', v: dmH / cal, h: dmH, color: DC[0], group: 't1' },
+      LL('Interf. Op', 'c_iop', 'dm', ORG, DC[2]), LL('EQAC', 'c_eqac', 'dm', ORG, DC[2]),
+      { label: 'DF', kind: 'total', v: 1 - det / cal, h: cal - det, color: DC[0], group: 't2' });
+    wf(boxR, r);
+  }
+
+  const paretoOf = (rows) => {
+    const g = d3.rollup(rows, (v) => ({ h: d3.sum(v, (r) => +r.h), ev: d3.sum(v, (r) => +r.eventos) }), (r) => r.sistema);
+    const list = Array.from(g, ([sistema, o]) => ({ sistema, ...o })).filter((d) => d.h > 0).sort((a, b) => b.h - a.h);
+    const tot = d3.sum(list, (d) => d.h); let acc = 0;
+    for (const d of list) { acc += d.h; d.pct = d.h / tot; d.acum = acc / tot; }
+    return list;
+  };
+
+  const fitText = (t, maxW) => { const n = t.node(); let s = n.textContent; while (s.length > 1 && n.getComputedTextLength() > maxW) { s = s.slice(0, -1); n.textContent = s + '\u2026'; } if (n.getComputedTextLength() > maxW) n.textContent = ''; };
+  const clear = (box) => { box.classList.remove('dash-skeleton'); box.querySelectorAll('svg, .jr-fail').forEach((n) => n.remove()); };
+  const legend = (el, items) => { el.replaceChildren(); for (const [n, c] of items) { const s = document.createElement('span'); const sw = document.createElement('span'); sw.className = 'jr-sw'; sw.style.background = c; s.append(sw, n); el.append(s); } };
+
+  function gauge(box, v) {
+    clear(box);
+    if (v == null) return empty(box, 'Sin datos para estos filtros');
+    const W = box.clientWidth, R = Math.min(W / 2 - 24, 120), H = R + 44;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const g = svg.append('g').attr('transform', `translate(${W / 2},${R + 12})`);
+    const a = d3.scaleLinear([0, 1], [-Math.PI / 2, Math.PI / 2]);
+    const arc = d3.arc().innerRadius(R * 0.68).outerRadius(R).cornerRadius(3);
+    g.append('path').attr('d', arc({ startAngle: a(0), endAngle: a(1) })).style('fill', 'var(--cds-chart-grid)');
+    g.append('path').attr('d', arc({ startAngle: a(0), endAngle: a(Math.max(0, Math.min(1, v))) })).style('fill', v < META ? '#C13832' : DC[0]);
+    const am = a(META) - Math.PI / 2;
+    g.append('line').attr('x1', Math.cos(am) * R * 0.62).attr('y1', Math.sin(am) * R * 0.62).attr('x2', Math.cos(am) * (R + 6)).attr('y2', Math.sin(am) * (R + 6)).style('stroke', 'var(--color-fg)').attr('stroke-width', 2);
+    g.append('text').attr('x', Math.cos(am) * (R + 10)).attr('y', Math.sin(am) * (R + 10)).attr('text-anchor', 'start').text('Meta 70%');
+    g.append('text').attr('x', -R * 0.84).attr('y', 18).attr('text-anchor', 'middle').text('0%');
+    g.append('text').attr('x', R * 0.84).attr('y', 18).attr('text-anchor', 'middle').text('100%');
+    g.append('text').attr('y', -6).attr('text-anchor', 'middle').style('font-family', 'var(--font-anthropic-serif)').style('font-size', Math.round(R * 0.32) + 'px').style('fill', 'var(--color-fg)').text(pct(v));
+  }
+
+  function donut(box, lgEl, parts) {
+    clear(box);
+    const tot = d3.sum(parts, (p) => p.v);
+    legend(lgEl, []);
+    if (!tot) return empty(box, 'Sin datos para estos filtros');
+    const W = box.clientWidth, S = Math.min(W, 200), H = S;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const g = svg.append('g').attr('transform', `translate(${W / 2},${H / 2})`);
+    const arcs = d3.pie().value((p) => p.v).sort(null).padAngle(0.01)(parts);
+    const arc = d3.arc().innerRadius(S * 0.3).outerRadius(S / 2 - 4);
+    const tip = tipFor(box);
+    g.selectAll('path').data(arcs).join('path').attr('d', arc).style('fill', (d) => d.data.c)
+      .on('pointermove', (ev, d) => { const [px, py] = d3.pointer(ev, box); showTip(box, tip, px, py, d.data.n, [[null, 'Horas', one(d.data.v)], [null, '%', pct(d.data.v / tot)]]); })
+      .on('pointerleave', () => { tip.style.display = 'none'; });
+    lgEl.replaceChildren();
+    for (const p of parts) { const s = document.createElement('span'); const sw = document.createElement('span'); sw.className = 'jr-sw'; sw.style.background = p.c; s.append(sw, `${p.n}: ${int(p.v)} h (${pct(p.v / tot)})`); lgEl.append(s); }
+  }
+
+  function combo(box, list, maxEq) {
+    clear(box);
+    if (!list.length) return empty(box, 'Sin datos para estos filtros');
+    const W = box.clientWidth, H = 280;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const m = { t: 24, r: textW(svg, '10') + 14, b: 30, l: textW(svg, '100%') + 10 };
+    const x = d3.scaleBand(list.map((d) => d.k), [m.l, W - m.r]).padding(0.2);
+    const y = d3.scaleLinear([0, 1], [H - m.b, m.t]);
+    const y2 = d3.scaleLinear([0, Math.max(1, maxEq)], [H - m.b, m.t]).nice();
+    svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(4).tickFormat(pct0).tickSize(-(W - m.l - m.r))).call(cleanAxis).call((g) => g.select('.domain').remove());
+    svg.append('g').attr('transform', `translate(${W - m.r},0)`).call(d3.axisRight(y2).ticks(4).tickFormat(int)).call(cleanAxis).call((g) => g.select('.domain').remove());
+    const step = Math.ceil(list.length / Math.max(2, Math.floor((W - m.l - m.r) / 52)));
+    svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).tickValues(list.filter((d, i) => i % step === 0).map((d) => d.k)).tickFormat((k) => list.find((d) => d.k === k).label)).call(cleanAxis);
+    svg.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', y(META)).attr('y2', y(META)).style('stroke', 'var(--cds-chart-reference)').attr('stroke-dasharray', '4 3');
+    const bw = Math.min(48, x.bandwidth()), off = (x.bandwidth() - bw) / 2;
+    const tip = tipFor(box);
+    svg.append('g').selectAll('rect').data(list).join('rect').attr('x', (d) => x(d.k) + off).attr('width', bw).attr('y', (d) => y(d.df)).attr('height', (d) => y(0) - y(d.df)).attr('rx', Math.min(4, bw / 2))
+      .style('fill', (d) => (d.df < META ? '#C13832' : DC[0]))
+      .on('pointermove', (ev, d) => { const [px, py] = d3.pointer(ev, box); showTip(box, tip, px, py, d.title, [[DC[0], 'DF', pct(d.df)], [DC[2], 'DM', pct(d.dm)], [DC[1], 'Equipos disponibles prom.', one(d.eq)], [null, 'Equipos en parque', one(d.n)]]); })
+      .on('pointerleave', () => { tip.style.display = 'none'; });
+    if (bw >= 34) svg.append('g').selectAll('text').data(list).join('text').attr('x', (d) => x(d.k) + x.bandwidth() / 2).attr('y', H - m.b - 6).attr('text-anchor', 'middle').style('fill', (d) => ink(d.df < META ? '#C13832' : DC[0])).style('font-weight', 600).text((d) => pct(d.df));
+    svg.append('path').datum(list).attr('fill', 'none').style('stroke', DC[2]).attr('stroke-width', 2).attr('stroke-dasharray', '6 3').attr('stroke-linejoin', 'round')
+      .attr('d', d3.line().x((d) => x(d.k) + x.bandwidth() / 2).y((d) => y(d.dm)));
+    svg.append('g').selectAll('rect.dm').data(list).join('rect').attr('class', 'dm').attr('x', (d) => x(d.k) + x.bandwidth() / 2 - 3).attr('y', (d) => y(d.dm) - 3).attr('width', 6).attr('height', 6).style('fill', DC[2]);
+    svg.append('path').datum(list).attr('fill', 'none').style('stroke', DC[1]).attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round')
+      .attr('d', d3.line().x((d) => x(d.k) + x.bandwidth() / 2).y((d) => y2(d.eq)));
+    svg.append('g').selectAll('circle').data(list).join('circle').attr('cx', (d) => x(d.k) + x.bandwidth() / 2).attr('cy', (d) => y2(d.eq)).attr('r', 3).style('fill', DC[1]);
+    if (list.length <= 16) svg.append('g').selectAll('text').data(list).join('text').attr('x', (d) => x(d.k) + x.bandwidth() / 2).attr('y', (d) => y2(d.eq) - 8).attr('text-anchor', 'middle').style('fill', 'var(--color-fg)').style('font-weight', 600).text((d) => one(d.eq));
+  }
+
+  function hbars(box, list) {
+    clear(box);
+    if (!list.length) return empty(box, 'Sin detenciones en este per\u00edodo');
+    const W = box.clientWidth;
+    const svg = d3.select(box).append('svg').attr('width', '100%');
+    const labW = d3.max(list, (d) => textW(svg, d.n)) + 10, endW = textW(svg, '0.000') + 10;
+    const rowH = 26, H = rowH * list.length + 4;
+    svg.attr('viewBox', `0 0 ${W} ${H}`);
+    const y = d3.scaleBand(list.map((d) => d.n), [2, H - 2]).padding(0.25);
+    const x = d3.scaleLinear([0, d3.max(list, (d) => d.v)], [labW, Math.max(labW + 10, W - endW)]);
+    const g = svg.append('g').selectAll('g').data(list).join('g');
+    g.append('text').attr('x', labW - 8).attr('y', (d) => y(d.n) + y.bandwidth() / 2 + 4).attr('text-anchor', 'end').text((d) => d.n);
+    g.append('rect').attr('x', labW).attr('y', (d) => y(d.n)).attr('height', y.bandwidth()).attr('width', (d) => Math.max(1, x(d.v) - labW)).attr('rx', 4).style('fill', (d) => d.c || DC[2]);
+    g.append('text').attr('x', (d) => x(d.v) + 6).attr('y', (d) => y(d.n) + y.bandwidth() / 2 + 4).style('fill', 'var(--color-fg)').text((d) => int(d.v));
+  }
+
+  function stackEq(box, lgEl, eqList, sysOrder, color) {
+    clear(box);
+    if (!eqList.length) return empty(box, 'Sin datos para estos filtros');
+    legend(lgEl, [...sysOrder.map((s) => [s, color(s)]), ['Disponibilidad', DC[1]]]);
+    const W = box.clientWidth, H = 300;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const maxH = d3.max(eqList, (d) => d3.sum(sysOrder, (s) => d[s] || 0)) || 1;
+    const y = d3.scaleLinear([0, maxH], [H - 28, 20]).nice();
+    const m = { t: 20, r: textW(svg, '100%') + 12, b: 28, l: textW(svg, int(y.domain()[1])) + 10 };
+    const x = d3.scaleBand(eqList.map((d) => d.equipo), [m.l, W - m.r]).padding(0.25);
+    const y2 = d3.scaleLinear([0, 1], [H - m.b, m.t]);
+    svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickFormat(int).tickSize(-(W - m.l - m.r))).call(cleanAxis).call((g) => g.select('.domain').remove());
+    svg.append('g').attr('transform', `translate(${W - m.r},0)`).call(d3.axisRight(y2).ticks(4).tickFormat(pct0)).call(cleanAxis).call((g) => g.select('.domain').remove());
+    svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x)).call(cleanAxis);
+    const st = d3.stack().keys(sysOrder).value((d, k) => d[k] || 0)(eqList);
+    const bw = Math.min(48, x.bandwidth()), off = (x.bandwidth() - bw) / 2;
+    const tip = tipFor(box);
+    const lay = svg.append('g').selectAll('g').data(st).join('g').style('fill', (s) => color(s.key));
+    lay.selectAll('rect').data((s) => s.map((d) => ({ ...d, key: s.key }))).join('rect')
+      .attr('x', (d) => x(d.data.equipo) + off).attr('width', bw).attr('y', (d) => y(d[1])).attr('height', (d) => Math.max(0, y(d[0]) - y(d[1])))
+      .on('pointermove', (ev, d) => { const [px, py] = d3.pointer(ev, box); showTip(box, tip, px, py, `${d.data.equipo} \u00b7 ${d.key}`, [[color(d.key), 'Horas', one(d[1] - d[0])], [null, 'DF', pct(d.data.df)], [null, 'DM', pct(d.data.dm)]]); })
+      .on('pointerleave', () => { tip.style.display = 'none'; });
+    if (bw >= 30) lay.selectAll('text').data((s) => s.map((d) => ({ ...d, key: s.key })).filter((d) => y(d[0]) - y(d[1]) >= 15)).join('text')
+      .attr('x', (d) => x(d.data.equipo) + x.bandwidth() / 2).attr('y', (d) => (y(d[0]) + y(d[1])) / 2 + 4).attr('text-anchor', 'middle').style('fill', (d) => ink(color(d.key))).style('font-weight', 600).text((d) => one(d[1] - d[0]));
+    const cx = (d) => x(d.equipo) + x.bandwidth() / 2;
+    svg.append('path').datum(eqList).attr('fill', 'none').style('stroke', DC[1]).attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('d', d3.line().x(cx).y((d) => y2(d.df)));
+    svg.append('g').selectAll('circle').data(eqList).join('circle').attr('cx', cx).attr('cy', (d) => y2(d.df)).attr('r', 3.5).style('fill', DC[1]);
+    svg.append('g').selectAll('text').data(eqList).join('text').attr('x', cx).attr('y', (d) => y2(d.df) - 9).attr('text-anchor', 'middle').style('fill', 'var(--color-fg)').style('font-weight', 600).text((d) => pct(d.df));
+  }
+
+  function treemap(box, list, color) {
+    clear(box);
+    if (!list.length) return empty(box, 'Sin horas NP en este per\u00edodo');
+    const W = box.clientWidth, H = 320;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const root = d3.treemap().size([W, H]).paddingInner(2).round(true)(d3.hierarchy({ children: list }).sum((d) => d.v || 0).sort((a, b) => b.value - a.value));
+    const tip = tipFor(box);
+    const cell = svg.append('g').selectAll('g').data(root.leaves()).join('g').attr('transform', (d) => `translate(${d.x0},${d.y0})`);
+    cell.append('rect').attr('width', (d) => d.x1 - d.x0).attr('height', (d) => d.y1 - d.y0).attr('rx', 3).style('fill', (d) => color(d.data.s))
+      .on('pointermove', (ev, d) => { const [px, py] = d3.pointer(ev, box); showTip(box, tip, px, py, d.data.n, [[color(d.data.s), 'Sistema', d.data.s], [null, 'Horas NP', one(d.data.v)]]); })
+      .on('pointerleave', () => { tip.style.display = 'none'; });
+    cell.each(function (d) {
+      const w = d.x1 - d.x0, h = d.y1 - d.y0, g = d3.select(this);
+      if (w < 30 || h < 18) return;
+      const t = g.append('text').attr('x', 5).attr('y', 14).style('fill', ink(color(d.data.s))).style('font-weight', 600).style('pointer-events', 'none').text(d.data.n);
+      fitText(t, w - 10);
+      if (h >= 36) g.append('text').attr('x', 5).attr('y', h - 6).style('fill', ink(color(d.data.s))).style('font-family', 'var(--font-anthropic-serif)').style('font-size', 'var(--cds-font-size-heading)').style('pointer-events', 'none').text(int(d.data.v));
+    });
+  }
+
+  function drawSemanal(rows, det, scopeTxt) {
+    $$('.s-scope').forEach((e) => (e.textContent = scopeTxt));
+    const S = (f) => d3.sum(rows, (r) => +r[f]);
+    const cal = S('h_cal'), dt = S('h_det'), np = S('h_np'), pl = S('h_pl');
+    const df = cal ? 1 - dt / cal : null;
+    const days = new Set(rows.map((r) => r.fecha)).size;
+    gauge($('#s-gauge'), df);
+    const ext = S('c_iop') + S('c_eqac');
+    const dmv = cal ? df + ext / cal : null;
+    gauge($('#s-gauge-dm'), dmv);
+    $('.s-dm-sub').textContent = cal ? `EQAC ${one(S('c_eqac') / cal * 100)} pp \u00b7 Interf. op. ${one(S('c_iop') / cal * 100)} pp` : '\u2014';
+    $('.s-neq').classList.remove('dash-skeleton'); $('.s-neq').textContent = int(new Set(rows.map((r) => r.equipo)).size);
+    $('.s-prom').classList.remove('dash-skeleton'); $('.s-prom').textContent = days ? L.format(',.2f')((cal - dt) / 24 / days) : '\u2014';
+    donut($('#s-donut'), $('#s-donut-lg'), [{ n: 'Tiempo NP', v: np, c: '#C13832' }, { n: 'Tiempo PL', v: pl, c: '#4BACC6' }, { n: 'Tiempo disponible', v: cal - dt, c: '#0098AA' }]);
+
+    const byDay = days <= 31;
+    const grp = d3.groups(rows, (r) => (byDay ? r.fecha : +r.semana)).sort((a, b) => d3.ascending(a[0], b[0]));
+    const list = grp.map(([k, v]) => {
+      const c = d3.sum(v, (r) => +r.h_cal), d = d3.sum(v, (r) => +r.h_det), nd = new Set(v.map((r) => r.fecha)).size, xo = d3.sum(v, (r) => +r.c_iop + +r.c_eqac);
+      const label = byDay ? k.slice(8, 10) + ' ' + MESES[+k.slice(5, 7) - 1].slice(0, 3).toLowerCase() : 'S' + k;
+      return { k: String(k), label, title: byDay ? fmtDate(k) : 'Semana ' + k, df: c ? 1 - d / c : 0, dm: c ? 1 - (d - xo) / c : 0, eq: (c - d) / 24 / nd, n: c / 24 / nd };
+    });
+    $('.s-combo-t').textContent = byDay ? 'por d\u00eda' : 'por semana';
+    legend($('#s-combo-lg'), [['DF', DC[0]], ['DF bajo meta', '#C13832'], ['DM', DC[2]], ['Equipos disponibles prom.', DC[1]]]);
+    combo($('#s-combo'), list, d3.max(list, (d) => d.n) || 1);
+
+    const tipos = [];
+    for (const [k, v] of d3.rollup(det, (w) => d3.sum(w, (r) => +r.h), (r) => r.mant + '|' + r.tipo_perdida)) {
+      const [m, t] = k.split('|');
+      if (v > 0) tipos.push({ n: `${t.charAt(0) + t.slice(1).toLowerCase()} (${m})`, v, c: m === 'PL' ? '#4BACC6' : '#E55302' });
+    }
+    tipos.sort((a, b) => b.v - a.v);
+    legend($('#s-tipos-lg'), [['NP', '#E55302'], ['PL', '#4BACC6']]);
+    hbars($('#s-tipos'), tipos);
+
+    const sysTot = Array.from(d3.rollup(det, (v) => d3.sum(v, (r) => +r.h), (r) => r.sistema), ([s, v]) => ({ s, v })).sort((a, b) => b.v - a.v);
+    const top = sysTot.slice(0, 7).map((d) => d.s);
+    const sysKey = (s) => (top.includes(s) ? s : 'OTROS');
+    const color = (s) => (s === 'OTROS' || !top.includes(s) ? '#D0D0D0' : SYS[top.indexOf(s)]);
+    const order = [...top, ...(sysTot.length > 7 ? ['OTROS'] : [])];
+
+    const eqDf = d3.rollup(rows, (v) => { const c = d3.sum(v, (r) => +r.h_cal); return c ? 1 - d3.sum(v, (r) => +r.h_det) / c : null; }, (r) => r.equipo);
+    const eqDm = d3.rollup(rows, (v) => { const c = d3.sum(v, (r) => +r.h_cal); return c ? 1 - d3.sum(v, (r) => +r.h_det - +r.c_iop - +r.c_eqac) / c : null; }, (r) => r.equipo);
+    const eqSys = d3.rollup(det, (v) => d3.sum(v, (r) => +r.h), (r) => r.equipo, (r) => sysKey(r.sistema));
+    const eqList = Array.from(eqDf, ([equipo, d]) => { const o = { equipo, df: d, dm: eqDm.get(equipo) }; const m = eqSys.get(equipo); if (m) for (const [s, h] of m) o[s] = h; return o; })
+      .filter((d) => d.df != null).sort((a, b) => a.df - b.df);
+    stackEq($('#s-stack'), $('#s-stack-lg'), eqList, order, color);
+
+    const comp = d3.rollup(det.filter((r) => r.mant === 'NP'), (v) => ({ v: d3.sum(v, (r) => +r.h), s: d3.greatest(d3.rollups(v, (w) => d3.sum(w, (r) => +r.h), (r) => r.sistema), (x) => x[1])[0] }), (r) => r.componente);
+    let cl = Array.from(comp, ([n, o]) => ({ n, v: o.v, s: o.s })).filter((d) => d.v > 0).sort((a, b) => b.v - a.v);
+    if (cl.length > 30) { const rest = cl.slice(30); cl = cl.slice(0, 30); cl.push({ n: 'Otros componentes', v: d3.sum(rest, (d) => d.v), s: 'OTROS' }); }
+    treemap($('#s-tree'), cl, color);
+  }
+
+  const jkItems = (rows, key) => Array.from(d3.rollup(rows, (v) => ({ h: d3.sum(v, (r) => +r.h), n: d3.sum(v, (r) => +r.eventos) }), (r) => r[key]), ([name, o]) => ({ name, ...o }))
+    .filter((d) => d.n > 0 && d.h > 0).map((d) => ({ ...d, mttr: d.h / d.n }));
+  function drawJK(box, lgEl, items, nLabels) {
+    clear(box);
+    if (!items.length) { legend(lgEl, []); return empty(box, 'Sin fallas mec\u00e1nicas o el\u00e9ctricas en este per\u00edodo'); }
+    const totH = d3.sum(items, (d) => d.h), totN = d3.sum(items, (d) => d.n);
+    const mLim = totH / totN, nLim = totN / items.length;
+    const Q = (d) => (d.mttr > mLim && d.n > nLim ? 'ac' : d.mttr > mLim ? 'a' : d.n > nLim ? 'c' : 'ok');
+    const QC = { ac: '#C13832', a: DC[2], c: DC[3], ok: '#D0D0D0' };
+    const QN = { ac: 'Agudo y cr\u00f3nico', a: 'Agudo (MTTR alto)', c: 'Cr\u00f3nico (muchas fallas)', ok: 'Bajo control' };
+    legend(lgEl, ['ac', 'a', 'c', 'ok'].map((q) => [QN[q], QC[q]]));
+    const W = box.clientWidth, H = 320;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const pad = (lo, hi) => [lo / 1.6, hi * 1.6];
+    const x = d3.scaleLog(pad(d3.min(items, (d) => d.n), d3.max(items, (d) => d.n)), [0, 1]);
+    const y = d3.scaleLog(pad(d3.min(items, (d) => d.mttr), d3.max(items, (d) => d.mttr)), [0, 1]);
+    const yt = y.ticks(5).filter((t) => [1, 2, 5].includes(+String(t).replace(/0|\./g, '') || 0) || y.ticks(5).length <= 6);
+    const m = { t: 10, r: 16, b: 38, l: textW(svg, one(d3.max(yt) || 100)) + 26 };
+    x.range([m.l, W - m.r]); y.range([H - m.b, m.t]);
+    const xt = x.ticks(6).filter((t) => x.ticks(6).length <= 7 || [1, 2, 5].includes(+String(t).replace(/0|\./g, '')));
+    svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).tickValues(xt).tickFormat(L.format(',~g')).tickSize(-(H - m.t - m.b))).call(cleanAxis).call((g) => g.select('.domain').remove());
+    svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).tickValues(yt).tickFormat(L.format(',~g')).tickSize(-(W - m.l - m.r))).call(cleanAxis).call((g) => g.select('.domain').remove());
+    svg.append('text').attr('x', (m.l + W - m.r) / 2).attr('y', H - 4).attr('text-anchor', 'middle').text('N\u00b0 de fallas (log)');
+    svg.append('text').attr('transform', `translate(10,${(m.t + H - m.b) / 2}) rotate(-90)`).attr('text-anchor', 'middle').text('MTTR, h (log)');
+    const [x0, x1] = x.domain(), [y0, y1] = y.domain();
+    const isos = [1, 2, 5].flatMap((k) => [1, 10, 100, 1000, 10000].map((p) => k * p)).filter((c) => c > x0 * y0 && c < x1 * y1);
+    const iso = isos.length > 4 ? isos.filter((c, i) => i % Math.ceil(isos.length / 4) === 0) : isos;
+    const clip = 'jkclip' + Math.random().toString(36).slice(2, 7);
+    svg.append('clipPath').attr('id', clip).append('rect').attr('x', m.l).attr('y', m.t).attr('width', W - m.l - m.r).attr('height', H - m.t - m.b);
+    const gi = svg.append('g').attr('clip-path', `url(#${clip})`);
+    for (const c of iso) {
+      const pts = d3.range(0, 41).map((i) => x0 * Math.pow(x1 / x0, i / 40)).map((n) => [x(n), y(c / n)]);
+      gi.append('path').attr('d', d3.line()(pts)).attr('fill', 'none').style('stroke', 'var(--cds-chart-grid)').attr('stroke-dasharray', '2 3').attr('stroke-width', 1.5);
+      const nx = Math.min(x1 / 1.2, c / (y0 * 1.3));
+      if (c / nx < y1 && nx > x0) gi.append('text').attr('x', x(nx) - 2).attr('y', y(c / nx) - 4).attr('text-anchor', 'end').text(int(c) + ' h');
+    }
+    svg.append('line').attr('x1', x(nLim)).attr('x2', x(nLim)).attr('y1', m.t).attr('y2', H - m.b).style('stroke', 'var(--cds-chart-reference)').attr('stroke-dasharray', '5 3');
+    svg.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', y(mLim)).attr('y2', y(mLim)).style('stroke', 'var(--cds-chart-reference)').attr('stroke-dasharray', '5 3');
+    svg.append('text').attr('x', W - m.r - 2).attr('y', y(mLim) - 4).attr('text-anchor', 'end').text('MTTR l\u00edm. ' + one(mLim) + ' h');
+    svg.append('text').attr('x', x(nLim) + 4).attr('y', m.t + 10).text('Fallas l\u00edm. ' + one(nLim));
+    const tip = tipFor(box);
+    const r = d3.scaleSqrt([0, d3.max(items, (d) => d.h)], [3, 12]);
+    const sorted = items.slice().sort((a, b) => b.h - a.h);
+    svg.append('g').selectAll('circle').data(sorted).join('circle').attr('cx', (d) => x(d.n)).attr('cy', (d) => y(d.mttr)).attr('r', (d) => r(d.h))
+      .style('fill', (d) => QC[Q(d)]).style('fill-opacity', 0.8).style('stroke', 'var(--color-panel)').attr('stroke-width', 1)
+      .on('pointermove', (ev, d) => { const [px, py] = d3.pointer(ev, box); showTip(box, tip, px, py, d.name, [[QC[Q(d)], 'Cuadrante', QN[Q(d)]], [null, 'Fallas', int(d.n)], [null, 'MTTR', one(d.mttr) + ' h'], [null, 'Horas de falla', one(d.h)]]); })
+      .on('pointerleave', () => { tip.style.display = 'none'; });
+    const lab = sorted.filter((d) => Q(d) !== 'ok').slice(0, nLabels);
+    const placed = [];
+    for (const d of lab) {
+      const px = x(d.n) + r(d.h) + 3, py = y(d.mttr) + 4;
+      if (placed.some((p) => Math.abs(p[0] - px) < 60 && Math.abs(p[1] - py) < 12)) continue;
+      placed.push([px, py]);
+      const t = svg.append('text').attr('x', px).attr('y', py).style('fill', 'var(--color-fg)').text(d.name);
+      fitText(t, Math.max(30, W - m.r - px));
+    }
+  }
+
+  const DIAS = ['domingo', 'lunes', 'martes', 'mi\u00e9rcoles', 'jueves', 'viernes', 's\u00e1bado'];
+  const fmtD = (f) => f.slice(8, 10) + '-' + f.slice(5, 7) + '-' + f.slice(0, 4);
+  const FT2 = ['NP MECANICA', 'NP ELECTRICA'];
+
+  function dNotes(box, notas, fechas) {
+    box.classList.remove('dash-skeleton'); box.replaceChildren();
+    if (!fechas.length) { const p = document.createElement('p'); p.className = 'jr-note'; p.textContent = 'Sin datos para estos filtros.'; box.append(p); return; }
+    if (fechas.length > 7) { const p = document.createElement('p'); p.className = 'jr-note'; p.textContent = 'El detalle diario se muestra al elegir una semana en el filtro Semana (o con "Ver \u00faltima semana").'; box.append(p); return; }
+    const byDay = d3.group(notas, (n) => n.fecha);
+    for (const f of fechas) {
+      const col = document.createElement('div'); col.className = 'jr-day';
+      const h = document.createElement('div'); h.className = 'jr-day-h';
+      h.textContent = fmtD(f); const sd = document.createElement('span'); sd.textContent = ' ' + DIAS[new Date(f + 'T12:00:00Z').getUTCDay()]; h.append(sd);
+      col.append(h);
+      const items = (byDay.get(f) || []).map((n) => ({ ...n, t: +n.h_np })).filter((n) => n.t >= 4).sort((a, b) => b.t - a.t);
+      if (!items.length) { const p = document.createElement('div'); p.className = 'jr-day-i jr-muted'; p.textContent = 'Sin detenciones NP relevantes (\u2265 4 h).'; col.append(p); }
+      items.slice(0, 6).forEach((n) => {
+        const it = document.createElement('div'); it.className = 'jr-day-i';
+        const b = document.createElement('b');
+        b.textContent = `${n.equipo} (${one(+n.h_np)} h NP):`;
+        if (+n.h_np >= 12) b.classList.add('jr-bad');
+        it.append(b, ' ' + (n.detalle_np || '\u2014'));
+        col.append(it);
+      });
+      if (items.length > 6) { const m = document.createElement('div'); m.className = 'jr-day-i jr-muted'; m.textContent = `+${items.length - 6} equipos m\u00e1s`; col.append(m); }
+      box.append(col);
+    }
+  }
+
+  function dStackDay(box, lgEl, list) {
+    clear(box);
+    const S3 = [['npf', 'NP falla (mec. + el\u00e9c.)', '#E55302'], ['npo', 'NP no falla', '#F4AA00'], ['pl', 'PL', '#0098AA']];
+    legend(lgEl, S3.map((s) => [s[1], s[2]]));
+    if (!list.length) return empty(box, 'Sin datos para estos filtros');
+    const W = box.clientWidth, H = 260;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const y = d3.scaleLinear([0, d3.max(list, (d) => d.npf + d.npo + d.pl) || 1], [H - 30, 18]).nice();
+    const m = { t: 18, r: 8, b: 30, l: textW(svg, int(y.domain()[1])) + 10 };
+    const x = d3.scaleBand(list.map((d) => d.k), [m.l, W - m.r]).padding(0.22);
+    svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(4).tickFormat(int).tickSize(-(W - m.l - m.r))).call(cleanAxis).call((g) => g.select('.domain').remove());
+    const step = Math.ceil(list.length / Math.max(2, Math.floor((W - m.l - m.r) / 60)));
+    svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).tickValues(list.filter((d, i) => i % step === 0).map((d) => d.k)).tickFormat((k) => list.find((d) => d.k === k).label)).call(cleanAxis);
+    const st = d3.stack().keys(S3.map((s) => s[0]))(list);
+    const bw = Math.min(64, x.bandwidth()), off = (x.bandwidth() - bw) / 2;
+    const tip = tipFor(box);
+    const lay = svg.append('g').selectAll('g').data(st).join('g').style('fill', (s, i) => S3[i][2]);
+    lay.selectAll('rect').data((s) => s.map((d) => ({ ...d, key: s.key }))).join('rect')
+      .attr('x', (d) => x(d.data.k) + off).attr('width', bw).attr('y', (d) => y(d[1])).attr('height', (d) => Math.max(0, y(d[0]) - y(d[1])))
+      .on('pointermove', (ev, d) => { const [px, py] = d3.pointer(ev, box); showTip(box, tip, px, py, d.data.title, S3.map((s) => [s[2], s[1], one(d.data[s[0]]) + ' h'])); })
+      .on('pointerleave', () => { tip.style.display = 'none'; });
+    if (bw >= 26) lay.each(function (s, i) {
+      d3.select(this).selectAll('text').data(s.filter((d) => y(d[0]) - y(d[1]) >= 14)).join('text')
+        .attr('x', (d) => x(d.data.k) + x.bandwidth() / 2).attr('y', (d) => (y(d[0]) + y(d[1])) / 2 + 4).attr('text-anchor', 'middle')
+        .style('fill', ink(S3[i][2])).style('font-weight', 600).text((d) => int(d[1] - d[0]));
+    });
+    svg.append('g').selectAll('text').data(list).join('text').attr('x', (d) => x(d.k) + x.bandwidth() / 2).attr('y', (d) => y(d.npf + d.npo + d.pl) - 5)
+      .attr('text-anchor', 'middle').style('fill', 'var(--color-fg)').style('font-weight', 600).text((d) => int(d.npf + d.npo + d.pl));
+  }
+
+  function dEqBars(box, list, fleet) {
+    clear(box);
+    if (!list.length) return empty(box, 'Sin datos para estos filtros');
+    const all = [{ n: `Flota (${list.length} eq.)`, v: fleet, f: true }, ...list.map((d) => ({ n: d.equipo, v: d.df }))];
+    const W = box.clientWidth;
+    const svg = d3.select(box).append('svg').attr('width', '100%');
+    const labW = d3.max(all, (d) => textW(svg, d.n)) + 10, rowH = 24, H = rowH * all.length + 24;
+    svg.attr('viewBox', `0 0 ${W} ${H}`);
+    const y = d3.scaleBand(all.map((d) => d.n), [2, H - 22]).padding(0.2);
+    const x = d3.scaleLinear([0, 1], [labW, W - 10]);
+    svg.append('g').attr('transform', `translate(0,${H - 22})`).call(d3.axisBottom(x).ticks(5).tickFormat(pct0).tickSize(-(H - 24))).call(cleanAxis).call((g) => g.select('.domain').remove());
+    const g = svg.append('g').selectAll('g').data(all).join('g');
+    g.append('text').attr('x', labW - 8).attr('y', (d) => y(d.n) + y.bandwidth() / 2 + 4).attr('text-anchor', 'end').style('fill', 'var(--color-fg)').style('font-weight', (d) => (d.f ? 600 : null)).text((d) => d.n);
+    g.append('rect').attr('x', labW).attr('y', (d) => y(d.n)).attr('height', y.bandwidth()).attr('width', (d) => Math.max(0, x(d.v) - labW)).attr('rx', 3)
+      .style('fill', (d) => (d.f ? '#F4AA00' : d.v < META ? '#C13832' : DC[0]));
+    g.append('text').attr('y', (d) => y(d.n) + y.bandwidth() / 2 + 4).each(function (d) {
+      const t = d3.select(this), lbl = pct(d.v), w = x(d.v) - labW;
+      const inside = w > textW(svg, lbl) + 12;
+      t.attr('x', inside ? x(d.v) - 6 : x(d.v) + 6).attr('text-anchor', inside ? 'end' : 'start')
+        .style('fill', inside ? ink(d.f ? '#F4AA00' : d.v < META ? '#C13832' : DC[0]) : 'var(--color-fg)').style('font-weight', 600).text(lbl);
+    });
+    svg.append('line').attr('x1', x(META)).attr('x2', x(META)).attr('y1', 0).attr('y2', H - 22).style('stroke', '#C13832').attr('stroke-dasharray', '5 3').attr('stroke-width', 1.5);
+    svg.append('text').attr('x', x(META) + 4).attr('y', H - 26).style('fill', '#C13832').text('Meta 70%');
+  }
+
+  function dCombo(box, lgEl, list, maxEq) {
+    clear(box);
+    legend(lgEl, [['Disponibilidad f\u00edsica', DC[0]], ['DF bajo meta', '#C13832'], ['% indisponibilidad EQAC', '#E55302'], ['Equipos disponibles prom.', '#0000FF']]);
+    if (!list.length) return empty(box, 'Sin datos para estos filtros');
+    const W = box.clientWidth, H = 280;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const m = { t: 24, r: textW(svg, '10') + 14, b: 30, l: textW(svg, '100%') + 10 };
+    const x = d3.scaleBand(list.map((d) => d.k), [m.l, W - m.r]).padding(0.22);
+    const y = d3.scaleLinear([0, 1], [H - m.b, m.t]);
+    const y2 = d3.scaleLinear([0, Math.max(1, maxEq)], [H - m.b, m.t]).nice();
+    svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickFormat(pct0).tickSize(-(W - m.l - m.r))).call(cleanAxis).call((g) => g.select('.domain').remove());
+    svg.append('g').attr('transform', `translate(${W - m.r},0)`).call(d3.axisRight(y2).ticks(4).tickFormat(int)).call(cleanAxis).call((g) => g.select('.domain').remove());
+    const step = Math.ceil(list.length / Math.max(2, Math.floor((W - m.l - m.r) / 60)));
+    svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).tickValues(list.filter((d, i) => i % step === 0).map((d) => d.k)).tickFormat((k) => list.find((d) => d.k === k).label)).call(cleanAxis);
+    svg.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', y(META)).attr('y2', y(META)).style('stroke', '#C13832').attr('stroke-dasharray', '5 3');
+    svg.append('text').attr('x', m.l + 4).attr('y', y(META) - 4).style('fill', '#C13832').text('Meta 70%');
+    const bw = Math.min(64, x.bandwidth()), off = (x.bandwidth() - bw) / 2;
+    const tip = tipFor(box);
+    const gb = svg.append('g').selectAll('g').data(list).join('g');
+    gb.append('rect').attr('x', (d) => x(d.k) + off).attr('width', bw).attr('y', (d) => y(d.df)).attr('height', (d) => y(0) - y(d.df)).style('fill', (d) => (d.df < META ? '#C13832' : DC[0]));
+    gb.append('rect').attr('x', (d) => x(d.k) + off).attr('width', bw).attr('y', (d) => y(d.df + d.eqac)).attr('height', (d) => y(d.df) - y(d.df + d.eqac)).style('fill', '#E55302');
+    gb.append('rect').attr('x', (d) => x(d.k) + off).attr('width', bw).attr('y', m.t).attr('height', H - m.b - m.t).attr('fill', 'transparent')
+      .on('pointermove', (ev, d) => { const [px, py] = d3.pointer(ev, box); showTip(box, tip, px, py, d.title, [[DC[0], 'Disponibilidad f\u00edsica', pct(d.df)], ['#E55302', 'Indisp. EQAC', pct(d.eqac)], [null, 'DF + EQAC', pct(d.df + d.eqac)], ['#0000FF', 'Equipos disponibles prom.', one(d.eq)]]); })
+      .on('pointerleave', () => { tip.style.display = 'none'; });
+    if (bw >= 34) {
+      gb.append('text').attr('x', (d) => x(d.k) + x.bandwidth() / 2).attr('y', (d) => Math.min(y(d.df) + 16, H - m.b - 6)).attr('text-anchor', 'middle').style('fill', (d) => ink(d.df < META ? '#C13832' : DC[0])).style('font-weight', 600).style('pointer-events', 'none').text((d) => pct(d.df));
+      gb.filter((d) => y(d.df) - y(d.df + d.eqac) >= 14).append('text').attr('x', (d) => x(d.k) + x.bandwidth() / 2).attr('y', (d) => (y(d.df) + y(d.df + d.eqac)) / 2 + 4).attr('text-anchor', 'middle').style('fill', '#FFFFFF').style('font-weight', 600).style('pointer-events', 'none').text((d) => pct(d.eqac));
+    }
+    svg.append('path').datum(list).attr('fill', 'none').style('stroke', '#0000FF').attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('d', d3.line().x((d) => x(d.k) + x.bandwidth() / 2).y((d) => y2(d.eq)));
+    svg.append('g').selectAll('circle').data(list).join('circle').attr('cx', (d) => x(d.k) + x.bandwidth() / 2).attr('cy', (d) => y2(d.eq)).attr('r', 3.5).style('fill', '#0000FF');
+    if (list.length <= 16) svg.append('g').selectAll('text').data(list).join('text').attr('x', (d) => x(d.k) + x.bandwidth() / 2).attr('y', (d) => y2(d.eq) - 9).attr('text-anchor', 'middle').style('fill', 'var(--color-fg)').style('font-weight', 600).text((d) => one(d.eq));
+  }
+
+  function dFlota(box, list) {
+    clear(box);
+    if (!list.length) return empty(box, 'Sin datos para estos filtros');
+    const COL = { DL421: '#F4AA00', 'M4C': '#E55302', 'M7C': '#0098AA' };
+    const W = box.clientWidth;
+    const svg = d3.select(box).append('svg').attr('width', '100%');
+    const labW = d3.max(list, (d) => textW(svg, d.n)) + 10, rowH = 30, H = rowH * list.length + 22;
+    svg.attr('viewBox', `0 0 ${W} ${H}`);
+    const y = d3.scaleBand(list.map((d) => d.n), [2, H - 20]).padding(0.22);
+    const x = d3.scaleLinear([0, 1], [labW, W - 10]);
+    svg.append('g').attr('transform', `translate(0,${H - 20})`).call(d3.axisBottom(x).ticks(4).tickFormat(pct0).tickSize(-(H - 22))).call(cleanAxis).call((g) => g.select('.domain').remove());
+    const g = svg.append('g').selectAll('g').data(list).join('g');
+    g.append('text').attr('x', labW - 8).attr('y', (d) => y(d.n) + y.bandwidth() / 2 + 4).attr('text-anchor', 'end').style('fill', 'var(--color-fg)').text((d) => d.n);
+    g.append('rect').attr('x', labW).attr('y', (d) => y(d.n)).attr('height', y.bandwidth()).attr('width', (d) => Math.max(0, x(d.v) - labW)).attr('rx', 3).style('fill', (d) => COL[d.n] || DC[0]);
+    g.append('text').attr('x', (d) => x(d.v) - 6).attr('y', (d) => y(d.n) + y.bandwidth() / 2 + 4).attr('text-anchor', 'end').style('fill', (d) => ink(COL[d.n] || DC[0])).style('font-weight', 600).text((d) => (x(d.v) - labW > 48 ? pct(d.v) : ''));
+    g.filter((d) => x(d.v) - labW <= 48).append('text').attr('x', (d) => x(d.v) + 6).attr('y', (d) => y(d.n) + y.bandwidth() / 2 + 4).style('fill', 'var(--color-fg)').style('font-weight', 600).text((d) => pct(d.v));
+    svg.append('line').attr('x1', x(META)).attr('x2', x(META)).attr('y1', 0).attr('y2', H - 20).style('stroke', '#C13832').attr('stroke-dasharray', '5 3').attr('stroke-width', 1.5);
+  }
+
+  function drawDesemp(rows, det, notas, scopeTxt, wLblTxt) {
+    $$('.d-scope').forEach((e) => (e.textContent = scopeTxt));
+    $('.d-title').textContent = 'Indicadores de desempe\u00f1o ' + wLblTxt;
+    const fechas = Array.from(new Set(rows.map((r) => r.fecha))).sort();
+    const eqs = new Set(rows.map((r) => r.equipo));
+    dNotes($('#d-notes'), notas.filter((n) => eqs.has(n.equipo)), fechas);
+    const byDay = fechas.length <= 31;
+    const keyOf = (r) => (byDay ? r.fecha : String(+r.semana));
+    const labOf = (k) => (byDay ? k.slice(8, 10) + '-' + k.slice(5, 7) : 'S' + k);
+    const titOf = (k) => (byDay ? fmtD(k) : 'Semana ' + k);
+    const dg = d3.rollup(det, (v) => ({
+      npf: d3.sum(v.filter((r) => r.mant === 'NP' && FT2.includes(r.tipo_perdida)), (r) => +r.h),
+      npo: d3.sum(v.filter((r) => r.mant === 'NP' && !FT2.includes(r.tipo_perdida)), (r) => +r.h),
+      pl: d3.sum(v.filter((r) => r.mant === 'PL'), (r) => +r.h),
+    }), keyOf);
+    const keys = Array.from(new Set(rows.map(keyOf))).sort((a, b) => (byDay ? d3.ascending(a, b) : +a - +b));
+    dStackDay($('#d-stack'), $('#d-stack-lg'), keys.map((k) => ({ k, label: labOf(k), title: titOf(k), npf: 0, npo: 0, pl: 0, ...(dg.get(k) || {}) })));
+    const cal = d3.sum(rows, (r) => +r.h_cal), dt = d3.sum(rows, (r) => +r.h_det);
+    const eqList = Array.from(d3.rollup(rows, (v) => { const c = d3.sum(v, (r) => +r.h_cal); return c ? 1 - d3.sum(v, (r) => +r.h_det) / c : 0; }, (r) => r.equipo), ([equipo, df]) => ({ equipo, df })).sort((a, b) => b.df - a.df);
+    dEqBars($('#d-eq'), eqList, cal ? 1 - dt / cal : 0);
+    const cg = d3.groups(rows, keyOf).sort((a, b) => (byDay ? d3.ascending(a[0], b[0]) : +a[0] - +b[0]));
+    const cl = cg.map(([k, v]) => { const c = d3.sum(v, (r) => +r.h_cal), d = d3.sum(v, (r) => +r.h_det), nd = new Set(v.map((r) => r.fecha)).size; return { k, label: labOf(k), title: titOf(k), df: c ? 1 - d / c : 0, eqac: c ? d3.sum(v, (r) => +r.c_eqac) / c : 0, eq: (c - d) / 24 / nd, n: c / 24 / nd }; });
+    dCombo($('#d-combo'), $('#d-combo-lg'), cl, d3.max(cl, (d) => d.n) || 1);
+    const fl = Array.from(d3.rollup(rows, (v) => { const c = d3.sum(v, (r) => +r.h_cal); return c ? 1 - d3.sum(v, (r) => +r.h_det) / c : 0; }, (r) => r.modelo), ([n, v]) => ({ n, v })).sort((a, b) => b.v - a.v);
+    dFlota($('#d-flota'), fl);
+    const np = d3.sum(rows, (r) => +r.h_np), pl = d3.sum(rows, (r) => +r.h_pl);
+    const setK = (s, t) => { const el = $(s); el.classList.remove('dash-skeleton'); el.textContent = t; };
+    setK('.d-df', cal ? pct(1 - dt / cal) : '\u2014');
+    $('.d-df').classList.toggle('jr-bad', cal && 1 - dt / cal < META); $('.d-df').classList.toggle('jr-good', cal && 1 - dt / cal >= META);
+    setK('.d-plnp', np + pl ? `${pct0(pl / (np + pl))} / ${pct0(np / (np + pl))}` : '\u2014');
+    setK('.d-plnp-r', np ? L.format(',.2f')(pl / np) : '\u2014');
+    $$('.d-wk').forEach((e) => (e.textContent = wLblTxt));
+  }
+
+  const setOpts = (sel, vals, fmt) => {
+    const key = vals.join(',');
+    if (sel.dataset.opts !== key) { sel.replaceChildren(...vals.map((v) => new Option(fmt(v), String(v)))); sel.dataset.opts = key; }
+  };
+
+  dash.onData(() => {
+    const ds = dash.data('diario'), ns = dash.data('detalle');
+    const P = dash.params();
+    const flota = P.flota || 'JR'; flotaSel.value = flota;
+    const allRaw = ds.status === 'ok' ? ds.data : [];
+    const all = allRaw.filter((r) => r.flota === flota);
+    const flotaModelos = Array.from(new Set(all.map((r) => r.modelo))).sort();
+    const mKey2 = 'fm' + flotaModelos.join(',');
+    if (modelSel.dataset.fk !== mKey2) { modelSel.replaceChildren(new Option('Todos', 'TODOS'), ...flotaModelos.map((m) => new Option(m, m))); modelSel.dataset.fk = mKey2; }
+    const years = Array.from(new Set(all.map((r) => +r.anio))).sort((a, b) => a - b);
+    let yr = P.anio; if (years.length && !years.includes(yr)) yr = years[years.length - 1];
+    setOpts(yearSel, years, String); if (yr != null) yearSel.value = String(yr);
+    const modelo = P.modelo || 'TODOS'; modelSel.value = modelo;
+    const yRows = all.filter((r) => +r.anio === yr);
+    const allWeeks = Array.from(new Set(yRows.map((r) => +r.semana))).sort((a, b) => a - b);
+    const months = Array.from(new Set(yRows.map((r) => +r.mes))).sort((a, b) => a - b);
+    const mes = months.includes(P.mes) ? P.mes : null;
+    const mKey = 'm' + months.join(',');
+    if (monthSel.dataset.opts !== mKey) { monthSel.replaceChildren(new Option('Todos', ''), ...months.map((m) => new Option(MESES[m - 1], String(m)))); monthSel.dataset.opts = mKey; }
+    monthSel.value = mes ? String(mes) : '';
+    const weeks = mes ? Array.from(new Set(yRows.filter((r) => +r.mes === mes).map((r) => +r.semana))).sort((a, b) => a - b) : allWeeks;
+    const wMin = weeks[0] ?? 1, wMax = weeks[weeks.length - 1] ?? 1;
+    const selW = weeks.includes(P.semana) ? P.semana : null;
+    const w0 = selW ?? wMin, w1 = selW ?? wMax;
+    const wk = 'w' + weeks.join(',');
+    if (weekSel.dataset.opts !== wk) { weekSel.replaceChildren(new Option('Todas', ''), ...weeks.map((w) => new Option('S' + w, String(w)))); weekSel.dataset.opts = wk; }
+    weekSel.value = selW == null ? '' : String(selW);
+    const eqSel = P.equipo || null;
+
+    const inScope = (r) => +r.anio === yr && (!mes || +r.mes === mes) && (modelo === 'TODOS' || r.modelo === modelo) && +r.semana >= w0 && +r.semana <= w1;
+    let rows = yRows.filter(inScope);
+    const wLbl = w0 === w1 ? `S${w0}` : `S${w0}\u2013S${w1}`;
+    const scopeTxt = `${yr ?? '\u2014'}` + (mes ? ' \u00b7 ' + MESES[mes - 1] : '') + ` \u00b7 ${wLbl}` + (modelo !== 'TODOS' ? ' \u00b7 ' + modelo : '');
+    $$('.sc-lbl').forEach((e) => (e.textContent = wLbl));
+    const tab = ['semanal', 'desempeno'].includes(P.tab) ? P.tab : 'resumen';
+    $('#tab-resumen').hidden = tab !== 'resumen'; $('#tab-semanal').hidden = tab !== 'semanal'; $('#tab-desempeno').hidden = tab !== 'desempeno'; $('#takeaway').hidden = tab !== 'resumen';
+    $$('.jr-tabs button').forEach((bt) => bt.setAttribute('aria-selected', String(bt.dataset.tab === tab)));
+    lastWeek = allWeeks[allWeeks.length - 1];
+    if (tab === 'desempeno') {
+      const nt = dash.data('notas');
+      if (ds.status === 'error') ['#d-eq', '#d-combo', '#d-flota'].forEach((s) => fail($(s)));
+      if (ns.status === 'error') fail($('#d-stack'));
+      if (nt.status === 'error') fail($('#d-notes'));
+      if (ds.status === 'ok' && ns.status === 'ok' && nt.status === 'ok') {
+        const fset = new Set(rows.map((r) => r.fecha));
+        const nsFl = ns.data.filter((r) => r.flota === flota);
+        const ntFl = nt.data.filter((r) => r.flota === flota);
+        drawDesemp(rows, nsFl.filter(inScope), ntFl.filter((n) => fset.has(n.fecha)), scopeTxt, wLbl);
+      }
+      return;
+    }
+    if (tab === 'semanal') {
+      if (ds.status === 'error') ['#s-gauge', '#s-donut', '#s-combo', '#s-stack'].forEach((s) => fail($(s)));
+      if (ns.status === 'error') ['#s-tipos', '#s-tree'].forEach((s) => fail($(s)));
+      const eqOpts = Array.from(new Set(rows.map((r) => r.equipo))).sort();
+      const sEqs = (Array.isArray(P.s_equipos) ? P.s_equipos : []).filter((e) => eqOpts.includes(e));
+      const sEq = sEqs.length ? (sEqs.length <= 3 ? sEqs.join(', ') : sEqs.length + ' equipos') : null;
+      const ok = 'e' + eqOpts.join(',');
+      if (sEqList.dataset.opts !== ok) {
+        sEqList.replaceChildren(...eqOpts.map((e) => { const l = document.createElement('label'); const c = document.createElement('input'); c.type = 'checkbox'; c.value = e; l.append(c, ' ' + e); return l; }));
+        sEqList.dataset.opts = ok;
+      }
+      sEqList.querySelectorAll('input').forEach((c) => { c.checked = sEqs.includes(c.value); });
+      sEqSum.textContent = sEq || 'Todos';
+      const byEq = (r) => !sEqs.length || sEqs.includes(r.equipo);
+      const detAll = ns.status === 'ok' ? ns.data.filter((r) => r.flota === flota && inScope(r) && byEq(r)) : [];
+      const tpOpts = Array.from(new Set(detAll.map((r) => r.tipo_perdida))).sort();
+      const sTps = (Array.isArray(P.s_tipos) ? P.s_tipos : []).filter((t) => tpOpts.includes(t));
+      const tk = 't' + tpOpts.join(',');
+      if (msList.dataset.opts !== tk) {
+        msList.replaceChildren(...tpOpts.map((t) => { const l = document.createElement('label'); const c = document.createElement('input'); c.type = 'checkbox'; c.value = t; l.append(c, ' ' + t.charAt(0) + t.slice(1).toLowerCase()); return l; }));
+        msList.dataset.opts = tk;
+      }
+      msList.querySelectorAll('input').forEach((c) => { c.checked = sTps.includes(c.value); });
+      msSum.textContent = !sTps.length ? 'Todos' : sTps.length === 1 ? sTps[0].charAt(0) + sTps[0].slice(1).toLowerCase() : sTps.length + ' seleccionados';
+      const tpTxt = sTps.map((t) => t.toLowerCase()).join(', ');
+      $$('.s-tp-note').forEach((e) => { e.hidden = !sTps.length; e.textContent = sTps.length ? 'Filtrado a tipo de p\u00e9rdida: ' + tpTxt + '.' : ''; });
+      if (ds.status === 'ok' && ns.status === 'ok') drawSemanal(rows.filter(byEq), detAll.filter((r) => !sTps.length || sTps.includes(r.tipo_perdida)), scopeTxt + (sEq ? ' \u00b7 ' + sEq : '') + (sTps.length ? ' \u00b7 ' + (sTps.length === 1 ? tpTxt : sTps.length + ' tipos de p\u00e9rdida') : ''));
+      return;
+    }
+    {
+      const opts = Array.from(new Set(rows.map((r) => r.equipo))).sort();
+      const sel = (Array.isArray(P.r_equipos) ? P.r_equipos : []).filter((e) => opts.includes(e));
+      const list = $('#tab-resumen .jr-ms-list');
+      const k = 'r' + opts.join(',');
+      if (list.dataset.opts !== k) {
+        list.replaceChildren(...opts.map((e) => { const l = document.createElement('label'); const c = document.createElement('input'); c.type = 'checkbox'; c.value = e; l.append(c, ' ' + e); return l; }));
+        list.dataset.opts = k;
+      }
+      list.querySelectorAll('input').forEach((c) => { c.checked = sel.includes(c.value); });
+      $('#tab-resumen .jr-ms-sum').textContent = !sel.length ? 'Todos' : sel.length <= 3 ? sel.join(', ') : sel.length + ' equipos';
+      if (sel.length) { rows = rows.filter((r) => sel.includes(r.equipo)); rEqSel = sel; } else rEqSel = null;
+    }
+    const flotaLbl = {JR:'Jumbos JR',JRS:'JRS',RB3:'RB3',PICARROCA:'Picarroca'}[flota] || flota;
+    $('.t-scope').textContent = (rEqSel ? rEqSel.join(', ') : modelo === 'TODOS' ? flotaLbl : modelo) + ` en ${mes ? MESES[mes - 1].toLowerCase() + ' de ' : ''}${yr ?? '\u2014'}, ` + (w0 === w1 ? `semana ${w0}` : `semanas ${w0} a ${w1}`);
+
+    if (ds.status === 'error') {
+      ['#ch-wf-l', '#ch-wf-r'].forEach((s) => fail($(s)));
+      ['.k-df', '.k-dm', '.k-plnp', '.k-np', '.k-mttr', '.k-mtbf', '.k-mttr2', '.k-mtbf2'].forEach((s) => { $(s).classList.remove('dash-skeleton'); $(s).textContent = '\u2014'; });
+    } else if (ds.status === 'ok') {
+      const tot = agg(rows), wk = byWeek(rows);
+      const u = wk[wk.length - 1], p = wk[wk.length - 2];
+      const set = (s, t, cls) => { const el = $(s); el.classList.remove('dash-skeleton'); el.textContent = t; if (cls !== undefined) el.dataset.cls = cls; };
+      set('.k-df', tot.df == null ? '\u2014' : pct(tot.df)); $('.k-df').classList.toggle('jr-bad', tot.df != null && tot.df < META); $('.k-df').classList.toggle('jr-good', tot.df != null && tot.df >= META);
+      const gap = tot.df == null ? null : (tot.df - META) * 100;
+      set('.k-gap', gap == null ? '\u2014' : signed(gap)); $('.k-gap').className = 'k-gap ' + (gap == null ? '' : gap < 0 ? 'jr-bad' : 'jr-good');
+      const dpp = u && p ? (u.df - p.df) * 100 : null;
+      set('.k-np', int(tot.np)); set('.k-f', int(tot.f));
+      set('.k-plnp', tot.np ? L.format(',.2f')(tot.pl / tot.np) : '\u2014');
+      { const r = tot.np ? tot.pl / tot.np : null; $('.k-plnp').classList.toggle('jr-bad', r != null && r < META_PLNP); $('.k-plnp').classList.toggle('jr-good', r != null && r >= META_PLNP); } set('.k-plh', int(tot.pl)); set('.k-nph', int(tot.np));
+      set('.k-mttr', tot.mttr == null ? '\u2014' : one(tot.mttr) + ' h');
+      set('.k-mtbf', tot.mtbf == null ? '\u2014' : one(tot.mtbf) + ' h');
+      $('.t-df').textContent = tot.df == null ? '\u2014' : pct(tot.df);
+      $('.t-gap').textContent = gap == null ? '\u2014' : signed(gap);
+      $('.t-dm').textContent = tot.dm == null ? '\u2014' : pct(tot.dm);
+      set('.k-dm', tot.dm == null ? '\u2014' : pct(tot.dm)); $('.k-dm').classList.toggle('jr-bad', tot.dm != null && tot.dm < META); $('.k-dm').classList.toggle('jr-good', tot.dm != null && tot.dm >= META);
+      set('.k-eq', tot.cal ? one(tot.eqac / tot.cal * 100) : '\u2014'); set('.k-io', tot.cal ? one(tot.io / tot.cal * 100) : '\u2014');
+
+      drawWf(rows, scopeTxt);
+
+      const byEq = Array.from(d3.group(rows, (r) => r.equipo), ([equipo, v]) => ({ equipo, modelo: v[0].modelo, ...agg(v) }))
+        .filter((d) => d.cal > 0).sort((a, b) => b.np - a.np);
+      drawTable(byEq, eqSel);
+      $('.t-eq').textContent = byEq[0] ? `${byEq[0].equipo} (${int(byEq[0].np)} h)` : '\u2014';
+    }
+
+    const eqValid = eqSel && (modelo === 'TODOS' || rows.some((r) => r.equipo === eqSel));
+    $('.p-scope').textContent = eqValid ? 'Equipo ' + eqSel + ' \u00b7 ' + scopeTxt : (modelo === 'TODOS' ? flotaLbl : modelo) + ' \u00b7 ' + scopeTxt;
+    pick.hidden = !eqValid; pick.textContent = eqValid ? 'Quitar ' + eqSel + ' \u00d7' : '';
+    if (ns.status === 'ok') {
+      const nRows = ns.data.filter((r) => r.flota === flota && r.mant === 'NP' && inScope(r) && (!rEqSel || rEqSel.includes(r.equipo)));
+      {
+        const FT = ['NP MECANICA', 'NP ELECTRICA'], LT = [...FT, 'EN ESPERA LOGISTICA'];
+        const hF = d3.sum(nRows.filter((r) => LT.includes(r.tipo_perdida)), (r) => +r.h);
+        const nF = d3.sum(nRows.filter((r) => FT.includes(r.tipo_perdida)), (r) => +r.eventos);
+        const disp = d3.sum(rows, (r) => +r.h_cal - +r.h_det);
+        const plH = d3.sum(rows, (r) => +r.h_pl);
+        const hF3 = d3.sum(nRows.filter((r) => [...LT, 'FALTA DE REPUESTO'].includes(r.tipo_perdida)), (r) => +r.h);
+        { const r3 = hF3 ? plH / hF3 : null; const e3 = $('.k-plnp3'); e3.classList.remove('dash-skeleton'); e3.textContent = r3 == null ? '\u2014' : L.format(',.2f')(r3);
+          e3.classList.toggle('jr-bad', r3 != null && r3 < META_PLNP); e3.classList.toggle('jr-good', r3 != null && r3 >= META_PLNP); $('.k-nph3').textContent = int(hF3); }
+        { const r2 = hF ? plH / hF : null; $('.k-plnp2').classList.toggle('jr-bad', r2 != null && r2 < META_PLNP); $('.k-plnp2').classList.toggle('jr-good', r2 != null && r2 >= META_PLNP); }
+        for (const [s, t] of [['.k-plnp2', hF ? L.format(',.2f')(plH / hF) : '\u2014'], ['.k-nph2', int(hF)], ['.k-mttr2', nF ? one(hF / nF) + ' h' : '\u2014'], ['.k-mtbf2', nF ? one(disp / nF) + ' h' : '\u2014'], ['.k-f2', int(nF)]]) { const el = $(s); el.classList.remove('dash-skeleton'); el.textContent = t; }
+      }
+      const fleet = paretoOf(nRows);
+      drawPareto(eqValid ? paretoOf(nRows.filter((r) => r.equipo === eqSel)) : fleet);
+      $('.t-sis').textContent = fleet[0] ? fleet[0].sistema : '\u2014';
+      $('.t-sispct').textContent = fleet[0] ? pct0(fleet[0].pct) : '\u2014';
+      const fRows = nRows.filter((r) => r.tipo_perdida === 'NP MECANICA' || r.tipo_perdida === 'NP ELECTRICA');
+      drawJK($('#jk-eqnp'), $('#jk-eqnp-lg'), jkItems(nRows, 'equipo'), 10);
+      drawJK($('#jk-eq'), $('#jk-eq-lg'), jkItems(fRows, 'equipo'), 10);
+      $('.jk-scope').textContent = eqValid ? 'Equipo ' + eqSel + ' (clic en el ranking)' : flotaLbl + ' completa; clic en un equipo del ranking para filtrar';
+      drawJK($('#jk-comp'), $('#jk-comp-lg'), jkItems(eqValid ? fRows.filter((r) => r.equipo === eqSel) : fRows, 'componente'), 8);
+    } else if (ns.status === 'error') ['.k-mttr2', '.k-mtbf2', '.k-plnp2', '.k-plnp3'].forEach((s) => { $(s).classList.remove('dash-skeleton'); $(s).textContent = '\u2014'; }), ['#ch-pareto', '#jk-eqnp', '#jk-eq', '#jk-comp'].forEach((s) => fail($(s)));
+  });
+})();
+</script>
+
+<!-- SVG export, copy to clipboard, PPTX export -->
+<script>
+(() => {
+  const PROPS = ['fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-opacity', 'opacity', 'font-family', 'font-size', 'font-weight', 'text-anchor', 'display', 'visibility'];
+  const inline = (src, dst) => {
+    const cs = getComputedStyle(src);
+    for (const p of PROPS) dst.style.setProperty(p, cs.getPropertyValue(p));
+    const a = src.children, b = dst.children;
+    for (let i = 0; i < a.length; i++) if (b[i]) inline(a[i], b[i]);
+  };
+  const svgToImg = (svg) => new Promise((ok, ko) => {
+    const r = svg.getBoundingClientRect();
+    const c = svg.cloneNode(true);
+    inline(svg, c);
+    c.querySelectorAll('clipPath').forEach((n) => n.removeAttribute('style'));
+    c.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    c.setAttribute('width', r.width); c.setAttribute('height', r.height);
+    const img = new Image();
+    img.onload = () => ok({ img, w: r.width, h: r.height });
+    img.onerror = () => ko(new Error('No se pudo convertir el gr\u00e1fico'));
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(c));
+  });
+  async function cardBlob(card, opts) {
+    opts = opts || {};
+    const svgs = [...card.querySelectorAll('.jr-chart svg')].filter((s) => s.getBoundingClientRect().width > 0);
+    if (!svgs.length) throw new Error('Sin gr\u00e1fico');
+    const parts = await Promise.all(svgs.map(svgToImg));
+    const cs = getComputedStyle(card), fg = getComputedStyle(card.querySelector('h3') || card).color;
+    const font = getComputedStyle(card).fontFamily;
+    const S = 2, pad = 16;
+    const title = (card.querySelector('h3')?.textContent || '').replace(/\s+/g, ' ').trim();
+    const legends = [...card.querySelectorAll('.jr-legend > span')].map((s) => ({ c: s.querySelector('.jr-sw') ? getComputedStyle(s.querySelector('.jr-sw')).backgroundColor : null, t: s.textContent.trim() }));
+    const W = Math.max(...parts.map((p) => p.w)) + pad * 2;
+    const twoCols = card.querySelector('.jr-wf-grid') && parts.length === 2 && parts[0].w + parts[1].w + pad * 3 <= card.clientWidth + 4;
+    const chartW = twoCols ? parts[0].w + parts[1].w + pad * 3 : W;
+    const chartH = twoCols ? Math.max(parts[0].h, parts[1].h) : parts.reduce((t, p) => t + p.h + 8, 0);
+    const legH = legends.length ? 22 : 0;
+    const titleH = opts.noTitle ? 0 : 26;
+    const H = pad + titleH + legH + chartH + pad;
+    const cv = document.createElement('canvas');
+    cv.width = chartW * S; cv.height = H * S;
+    const g = cv.getContext('2d'); g.scale(S, S);
+    g.fillStyle = cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)' ? cs.backgroundColor : '#FFFFFF';
+    g.fillRect(0, 0, chartW, H);
+    g.fillStyle = fg; g.font = `600 15px ${font}`; g.textBaseline = 'top';
+    if (!opts.noTitle) g.fillText(title, pad, pad);
+    let y = pad + titleH;
+    if (legends.length) {
+      let x = pad; g.font = `12px ${font}`;
+      for (const l of legends) {
+        if (l.c) { g.fillStyle = l.c; g.fillRect(x, y + 2, 9, 9); x += 14; }
+        g.fillStyle = fg; g.fillText(l.t, x, y); x += g.measureText(l.t).width + 16;
+      }
+      y += legH;
+    }
+    if (twoCols) { g.drawImage(parts[0].img, pad, y, parts[0].w, parts[0].h); g.drawImage(parts[1].img, pad * 2 + parts[0].w, y, parts[1].w, parts[1].h); }
+    else for (const p of parts) { g.drawImage(p.img, pad, y, p.w, p.h); y += p.h + 8; }
+    if (opts.dims) return new Promise((ok) => cv.toBlob((bl) => ok({ blob: bl, w: chartW, h: H }), 'image/png'));
+    return new Promise((ok) => cv.toBlob(ok, 'image/png'));
+  }
+  async function copy(card, btn) {
+    const label = btn.textContent;
+    try {
+      const blob = await cardBlob(card);
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        btn.textContent = 'Copiada \u2713';
+      } catch (e) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = ((card.querySelector('h3')?.textContent || 'grafico').trim().replace(/[^\w\u00e1\u00e9\u00ed\u00f3\u00fa\u00f1 ]+/gi, '').replace(/\s+/g, '_')) + '.png';
+        document.body.append(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        btn.textContent = 'Descargada (PNG)';
+      }
+    } catch (e) { btn.textContent = 'No se pudo copiar'; }
+    setTimeout(() => { btn.textContent = label; }, 2200);
+  }
+  const TABN = { resumen: 'Resumen', semanal: 'Vista semanal', desempeno: 'Desempe\u00f1o semanal' };
+  const txt = (el) => (el ? el.textContent.replace(/\s+/g, ' ').trim() : '');
+  async function exportPpt(btn) {
+    const label = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Generando\u2026';
+    try {
+      const page = [...document.querySelectorAll('#dash-root .jr-page')].find((p) => !p.hidden);
+      const tabId = page ? page.id.replace('tab-', '') : 'resumen';
+      const scope = txt(page.querySelector('.d-scope, .s-scope')) || txt(document.querySelector('#dash-root .wf-scope')) || '';
+      const filtros = [...document.querySelectorAll('#dash-root .jr-filters select')].filter((s) => s.offsetParent !== null || s.closest('#filtros'))
+        .map((s) => `${(s.getAttribute('aria-label') || '').trim()}: ${s.selectedOptions[0] ? s.selectedOptions[0].textContent : '\u2014'}`).join(' \u00b7 ');
+      const fuente = 'Fuente: Tabla Maestra Mantenibilidad Equipos M\u00f3viles (hojas Detenciones y Parque) \u00b7 Flota ' + (dash.params().flota || 'JR') + ' \u00b7 Generado ' + new Date().toLocaleDateString('es-CL');
+      const slides = [];
+      const tiles = [...page.querySelectorAll('.jr-tile, .jr-dk')].map((t) => {
+        const v = t.querySelector('.jr-val');
+        return { h: txt(t.querySelector('.jr-lbl, .jr-dk-h')), v: txt(v), s: txt(t.querySelector('.jr-sub')), bad: v && v.classList.contains('jr-bad'), good: v && v.classList.contains('jr-good') };
+      });
+      const takeaway = tabId === 'resumen' ? txt(document.querySelector('#takeaway')) : '';
+      slides.push({ title: `Disponibilidad flota ${dash.params().flota || 'JR'} \u00b7 ${TABN[tabId]}${scope ? ' \u00b7 ' + scope : ''}`, subtitle: takeaway || filtros, kpis: tiles.slice(0, 12), footer: fuente });
+      const days = [...page.querySelectorAll('.jr-day')];
+      if (days.length) slides.push({
+        title: 'Detalle diario de detenciones NP' + (scope ? ' \u00b7 ' + scope : ''),
+        cols: days.map((d) => ({
+          h: txt(d.querySelector('.jr-day-h')),
+          items: [...d.querySelectorAll('.jr-day-i')].map((i) => {
+            const bb = i.querySelector('b'); const rest = i.textContent.slice(bb ? bb.textContent.length : 0).trim();
+            return bb ? [{ t: bb.textContent + ' ', b: true, c: bb.classList.contains('jr-bad') ? 'C13832' : '404040' }, { t: rest }] : [{ t: rest, c: '7F7F7F' }];
+          }),
+        })),
+        footer: fuente,
+      });
+      const tbl = page.querySelector('#tbl-rank');
+      if (tbl && tbl.tBodies[0] && tbl.tBodies[0].rows.length) {
+        const head = [...tbl.tHead.rows[0].cells].map((c) => txt(c));
+        const rows = [...tbl.tBodies[0].rows].map((r) => [...r.cells].map((c) => txt(c)));
+        const colors = [...tbl.tBodies[0].rows].map((r) => [...r.cells].map((c) => (c.classList.contains('jr-bad') ? 'C13832' : c.classList.contains('jr-good') ? '0098AA' : null)));
+        slides.push({ title: 'Malos actores \u00b7 ranking por horas NP' + (scope ? ' \u00b7 ' + scope : ''), table: { head, rows, colors }, footer: fuente });
+      }
+      for (const card of page.querySelectorAll('.jr-card')) {
+        if (!card.querySelector('.jr-chart svg')) continue;
+        try {
+          const r = await cardBlob(card, { noTitle: true, dims: true });
+          const data = new Uint8Array(await r.blob.arrayBuffer());
+          const note = [...card.querySelectorAll('.jr-note')].filter((n) => !n.hidden).map(txt).join(' ');
+          slides.push({ title: txt(card.querySelector('h3')), subtitle: note.length > 230 ? note.slice(0, 227) + '\u2026' : note, img: { data, w: r.w, h: r.h }, footer: fuente });
+        } catch (e) { /* sin datos */ }
+      }
+      const bytes = window.jrPptx.build(slides);
+      const fname = `Disponibilidad_Jumbos_${TABN[tabId].replace(/\s+/g, '_')}_${(scope || '').replace(/[^\w\u00e1\u00e9\u00ed\u00f3\u00fa\u00f1\u00c1\u00c9\u00cd\u00d3\u00da\u00d1]+/g, '_').replace(/^_|_$/g, '')}.pptx`;
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' }));
+      a.download = fname; document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      btn.textContent = 'Descargado \u2713';
+    } catch (e) { btn.textContent = 'No se pudo generar'; }
+    btn.disabled = false;
+    setTimeout(() => { btn.textContent = label; }, 2500);
+  }
+  { const b = document.querySelector('#dash-root .jr-ppt'); if (b) b.addEventListener('click', () => exportPpt(b)); }
+
+  const add = () => {
+    document.querySelectorAll('#dash-root .jr-card').forEach((card) => {
+      if (card.querySelector(':scope > .jr-copy') || !card.querySelector('.jr-chart')) return;
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'jr-copy'; b.textContent = 'Copiar imagen';
+      b.title = 'Copiar el gr\u00e1fico como imagen al portapapeles';
+      b.addEventListener('click', () => copy(card, b));
+      card.prepend(b);
+    });
+  };
+  add();
+})();
+</script>
+</body>
+</html>

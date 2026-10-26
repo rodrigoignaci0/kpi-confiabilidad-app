@@ -1,0 +1,22 @@
+node_modules/
+.env
+.DS_Store
+
+# Datos: nunca al repositorio
+data/
+*.db
+*.sqlite*
+*.xlsx
+*.xlsm
+*.xls
+*.csv
+*.pptx
+*.docx
+*.pdf
+powerbi_data/
+powerbi_cookies*.json
+control/Corregidos/
+control/turnos_*/
+control/estado_cierre_whatsapp.json
+__pycache__/
+supabase/.temp/

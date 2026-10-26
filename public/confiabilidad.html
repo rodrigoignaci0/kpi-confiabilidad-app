@@ -1,0 +1,3611 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dashboard Confiabilidad — Jumbos JR / JRS</title>
+<link rel="stylesheet" href="css/app.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<style>
+.cfg-hidden{display:none !important}
+.fullscreen-mode{position:fixed;inset:0;z-index:9990;background:var(--bg);overflow-y:auto;padding:20px 24px}
+.fullscreen-mode .page-header{position:sticky;top:0;z-index:1;background:var(--bg);padding-bottom:12px}
+.heatmap-grid{display:grid;gap:2px;overflow-x:auto}
+.hm-cell{min-width:52px;height:30px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;cursor:default}
+.hm-cell.verde{background:#dcfce7;color:#166534}
+.hm-cell.amarillo{background:#fef9c3;color:#92400e}
+.hm-cell.rojo{background:#fee2e2;color:#991b1b}
+.hm-cell.gris{background:#f3f4f6;color:#9ca3af}
+.hm-label{font-size:11px;font-weight:700;padding:4px 6px;white-space:nowrap;display:flex;align-items:center}
+.card-title-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border)}
+.card-title-bar .section-title{margin:0;padding:0;border:none}
+.btn-icon{background:none;border:1px solid var(--border);border-radius:5px;padding:3px 7px;font-size:12px;cursor:pointer;color:var(--text2);line-height:1;transition:background .15s}
+.btn-icon:hover{background:var(--surface2)}
+.card-body-collapse{transition:none}
+.chart-toolbar{display:flex;justify-content:flex-end;gap:4px;margin-bottom:6px}
+/* Modal zoom */
+#chartZoomModal{display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.7);align-items:center;justify-content:center}
+#chartZoomModal.open{display:flex}
+#chartZoomModal img{max-width:92vw;max-height:88vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+.badge-green{background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:9px;font-size:11px;font-weight:700}
+.badge-yellow{background:#fef9c3;color:#d97706;padding:2px 8px;border-radius:9px;font-size:11px;font-weight:700}
+.badge-red{background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:9px;font-size:11px;font-weight:700}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.kpi-label{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi-value{font-size:26px;font-weight:800;line-height:1}
+.kpi-sub{font-size:11px;color:var(--text2);margin-top:4px}
+.kpi-delta{font-size:11px;font-weight:700;margin-top:4px}
+.delta-up{color:#16a34a}
+.delta-down{color:#dc2626}
+.bad-actor-bar{height:10px;background:#E8571A;border-radius:3px;display:inline-block;min-width:2px}
+.pareto-bar-wrap{display:flex;align-items:center;gap:6px}
+.pareto-bar{height:8px;background:#E8571A;border-radius:2px;min-width:2px}
+.section-title{font-size:13px;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border)}
+.ia-box{background:linear-gradient(135deg,#f0f4ff,#e8f0fe);border:1px solid #c3d4f7;border-radius:8px;padding:14px;margin-top:10px;font-size:12px;line-height:1.6;color:#1a1a2e;white-space:pre-wrap}
+.ia-box.loading{color:#6b7280;font-style:italic}
+.ia-box.error{background:#fef2f2;border-color:#fca5a5;color:#991b1b}
+.btn-ia{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;transition:opacity .2s}
+.btn-ia:hover{opacity:.85}
+.btn-ia:disabled{opacity:.5;cursor:wait}
+#modalManual{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);align-items:center;justify-content:center}
+#modalManual.open{display:flex}
+#modalManual .modal-body{background:var(--surface);border-radius:12px;padding:24px;max-width:440px;width:95%;box-shadow:0 8px 40px rgba(0,0,0,.4)}
+#modalManual label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;display:block;margin:10px 0 4px}
+#modalManual select,#modalManual input,#modalManual textarea{width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text);box-sizing:border-box}
+#modalManual textarea{min-height:60px;resize:vertical}
+#modalManual .modal-header{font-size:15px;font-weight:800;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+#modalManual .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.det-edit:hover{background:rgba(99,102,241,.1);border-radius:4px}
+.filtro-label{display:block;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.filtro-input{padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);box-sizing:border-box}
+.filtro-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px rgba(99,102,241,.15)}
+.filtro-chips{display:flex;flex-wrap:wrap;gap:6px;padding-top:2px}
+.filtro-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border:1px solid var(--border);border-radius:16px;font-size:11px;font-weight:600;color:var(--text2);cursor:pointer;transition:all .15s;user-select:none;white-space:nowrap}
+.filtro-chip:hover{border-color:var(--primary);color:var(--primary)}
+.filtro-chip input[type="checkbox"]{width:12px;height:12px;margin:0;accent-color:var(--primary)}
+.filtro-chip:has(input:checked){background:rgba(99,102,241,.08);border-color:var(--primary);color:var(--primary)}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="overlay" id="loginOverlay" style="display:none;z-index:9999;background:#f0f2f5;align-items:center;justify-content:center">
+  <div class="modal" style="max-width:380px;width:100%;border-radius:16px;overflow:hidden;padding:0">
+    <div style="background:#1A1A1A;padding:28px 28px 20px;display:flex;flex-direction:column;align-items:center;gap:14px">
+      <img src="assets/steel-logo.png" alt="Steel" style="height:36px;filter:brightness(0) invert(1)"/>
+      <div style="text-align:center">
+        <div style="color:#fff;font-size:16px;font-weight:700">Confiabilidad Equipos</div>
+        <div style="color:#9ca3af;font-size:12px;margin-top:3px">Sistema de análisis</div>
+      </div>
+    </div>
+    <div style="padding:24px 28px">
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Usuario</label>
+        <input type="text" id="loginUser" placeholder="nombre de usuario" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()"/>
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginSubmit()"/>
+      </div>
+      <div id="loginError" style="color:#dc2626;font-size:12px;margin-top:8px;display:none;padding:8px 10px;background:#fef2f2;border-radius:6px">Usuario o contraseña incorrectos.</div>
+      <button class="btn btn-primary" onclick="loginSubmit()" style="width:100%;margin-top:18px;padding:11px;font-size:14px;font-weight:700">Ingresar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ZOOM CHART -->
+<div id="chartZoomModal" onclick="this.classList.remove('open')">
+  <img id="chartZoomImg" src="" alt="chart"/>
+</div>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="brand" style="cursor:pointer" onclick="toggleSidebar()">
+    <div class="brand-icon">
+      <img class="brand-full" src="assets/steel-logo.png" alt="Steel"/>
+      <img class="brand-mini" src="assets/steel-icon.png" alt="S"/>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="sidebar-section">Análisis</div>
+    <button class="sb-btn" onclick="showTab('ejecutivo')" data-tab="ejecutivo" data-tip="Ejecutivo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="8"/><rect x="14" y="6" width="3" height="12"/></svg>
+      <span class="sb-label">Ejecutivo</span>
+    </button>
+    <button class="sb-btn active" onclick="showTab('dashboard')" data-tab="dashboard" data-tip="Dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      <span class="sb-label">Dashboard</span>
+    </button>
+    <button class="sb-btn" onclick="showTab('disponibilidad')" data-tab="disponibilidad" data-tip="Disponibilidad">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span class="sb-label">Disponibilidad</span>
+    </button>
+    <button class="sb-btn" onclick="showTab('detenciones')" data-tab="detenciones" data-tip="Detenciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span class="sb-label">Detenciones</span>
+    </button>
+    <button class="sb-btn" onclick="showTab('sistemas')" data-tab="sistemas" data-tip="Por Sistema">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+      <span class="sb-label">Sistemas</span>
+    </button>
+    <button class="sb-btn" onclick="showTab('equipos')" data-tab="equipos" data-tip="Por Equipo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3l-4 4-4-4"/></svg>
+      <span class="sb-label">Equipos</span>
+    </button>
+    <div class="sidebar-section">Externo</div>
+    <button class="sb-btn" onclick="showTab('powerbi')" data-tab="powerbi" data-tip="Power BI Live">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      <span class="sb-label">Power BI</span>
+    </button>
+    <div class="sidebar-section">Sistema</div>
+    <button class="sb-btn" onclick="showTab('bd')" data-tab="bd" data-tip="Base de Datos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+      <span class="sb-label">Base de Datos</span>
+    </button>
+    <button class="sb-btn sb-admin-only" onclick="showTab('usuarios')" data-tab="usuarios" data-tip="Usuarios" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span class="sb-label">Usuarios</span>
+    </button>
+    <button class="sb-btn" onclick="cerrarSesion()" data-tip="Salir">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span class="sb-label">Salir</span>
+    </button>
+  </nav>
+  <div class="sidebar-footer">
+    <strong id="sfNombre">—</strong>
+    <span id="sfCargo" style="font-size:10px;color:var(--text2);display:block"></span>
+    <span id="sfBD" style="font-size:9px;color:var(--text2)">BD no cargada</span>
+  </div>
+</aside>
+
+<div class="sb-toggle" id="sbToggle" onclick="toggleSidebar()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+</div>
+
+<div class="page">
+<main>
+
+<!-- FILTROS GLOBALES -->
+<div id="filtrosGlobales" style="display:none;margin-bottom:20px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)">
+  <div style="display:grid;grid-template-columns:80px 90px 1fr;gap:12px 16px;align-items:start">
+    <!-- Fila 1: Año, Semana, Tipo Equipo -->
+    <div>
+      <label class="filtro-label">AÑO</label>
+      <input type="number" id="gYear" min="2020" max="2030" value="2026" class="filtro-input" style="width:100%"/>
+    </div>
+    <div>
+      <label class="filtro-label">SEMANA</label>
+      <input type="number" id="gWeek" min="0" max="53" value="0" class="filtro-input" style="width:100%" placeholder="0=todas"/>
+    </div>
+    <div>
+      <label class="filtro-label">TIPO EQUIPO</label>
+      <div class="filtro-chips">
+        <label class="filtro-chip"><input type="checkbox" id="fJR" checked onchange="sincronizarEqCheck()"/> JR</label>
+        <label class="filtro-chip"><input type="checkbox" id="fJRS" checked onchange="sincronizarEqCheck()"/> JRS</label>
+        <label class="filtro-chip"><input type="checkbox" id="fPICAROCA" checked onchange="sincronizarEqCheck()"/> PICARROCA</label>
+        <label class="filtro-chip"><input type="checkbox" id="fRB3" checked onchange="sincronizarEqCheck()"/> RB3</label>
+
+      </div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:120px 120px 1fr auto auto;gap:12px 16px;align-items:end;margin-top:12px">
+    <!-- Fila 2: Desde, Hasta, Mantenimiento, Turno, Equipo -->
+    <div>
+      <label class="filtro-label">DESDE</label>
+      <input type="date" id="gFechaDesde" class="filtro-input" style="width:100%"/>
+    </div>
+    <div>
+      <label class="filtro-label">HASTA</label>
+      <input type="date" id="gFechaHasta" class="filtro-input" style="width:100%"/>
+    </div>
+    <div style="display:flex;gap:16px;align-items:end">
+      <div>
+        <label class="filtro-label">MANTENIMIENTO</label>
+        <div class="filtro-chips">
+          <label class="filtro-chip"><input type="checkbox" id="fNP" checked /> NP</label>
+          <label class="filtro-chip"><input type="checkbox" id="fPL" checked /> PL</label>
+        </div>
+      </div>
+      <div>
+        <label class="filtro-label">TURNO</label>
+        <select id="gTurno" class="filtro-input" style="min-width:70px">
+          <option value="">Todos</option>
+          <option value="A">A</option>
+          <option value="B">B</option>
+        </select>
+      </div>
+      <div id="eqEspecificoWrap" style="display:none">
+        <label class="filtro-label">EQUIPO</label>
+        <select id="eqSelect" onchange="aplicarFiltros()" class="filtro-input" style="min-width:140px">
+          <option value="">-- Todos --</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;padding-bottom:1px">
+      <button class="btn btn-primary" onclick="aplicarFiltros()" style="padding:7px 16px;font-size:12px">Aplicar</button>
+      <button class="btn btn-ghost" onclick="limpiarFiltros()" style="padding:7px 16px;font-size:12px">Limpiar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EJECUTIVO ══ -->
+<div class="tab-content" id="tab-ejecutivo">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">DASHBOARD EJECUTIVO</h2>
+      <p class="page-sub" id="ejSubtitle">Resumen gerencial de flota</p>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <select id="ejFlota" onchange="renderEjecutivo()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg)">
+        <option value="JR">Jumbos JR</option>
+        <option value="JRS">Jumbos JRS</option>
+        <option value="PICARROCA">Picarroca</option>
+        <option value="RB3">RB3</option>
+        <option value="ALL">Toda la Flota</option>
+      </select>
+      <button class="btn-icon" onclick="toggleFullscreen()" title="Pantalla completa" style="font-size:16px" id="btnFullscreen">⛶</button>
+      <button class="btn-icon" onclick="openConfigPanel('ejecutivo')" title="Configurar vista" style="font-size:16px">⚙</button>
+    </div>
+  </div>
+
+  <!-- Fila 1: KPIs + Donut + Pie -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:20px" id="ejKpiRow">
+    <div class="card" style="padding:16px;text-align:center" id="ejCardDisp">
+      <div class="section-title" style="color:#e67e22">Disponibilidad Semanal</div>
+      <canvas id="chartEjDonut" style="max-height:180px"></canvas>
+    </div>
+    <div class="card" style="padding:16px" id="ejCardCantidad">
+      <div class="section-title" style="color:#e67e22">Resumen Flota</div>
+      <div id="ejFlotaKpis" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px"></div>
+    </div>
+    <div class="card" style="padding:16px;text-align:center" id="ejCardHorasEstado">
+      <div class="section-title" style="color:#e67e22">Horas distribuidas según estado</div>
+      <canvas id="chartEjPie" style="max-height:180px"></canvas>
+    </div>
+  </div>
+
+  <!-- Fila 2: Disponibilidad por Día + Horas por Tipo -->
+  <div style="display:grid;grid-template-columns:3fr 2fr;gap:14px;margin-bottom:20px">
+    <div class="card" style="padding:16px" id="ejCardDispDia">
+      <div class="section-title" style="color:#00838f">KPI Desempeño / Cantidad promedio Día</div>
+      <canvas id="chartEjDispDia" style="max-height:280px"></canvas>
+    </div>
+    <div class="card" style="padding:16px" id="ejCardTipoDet">
+      <div class="section-title" style="color:#e67e22">Horas por Tipo de Detención</div>
+      <canvas id="chartEjTipoDet" style="max-height:280px"></canvas>
+    </div>
+  </div>
+
+  <!-- Fila 3: Horas por Sistema/Equipo + Componentes -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+    <div class="card" style="padding:16px" id="ejCardSistEq">
+      <div class="section-title" style="color:#00838f">Horas de detención por sistema / Disponibilidad</div>
+      <canvas id="chartEjSistEquipo" style="max-height:320px"></canvas>
+    </div>
+    <div class="card" style="padding:16px" id="ejCardComponentes">
+      <div class="section-title" style="color:#e67e22">Distribución de Horas por Componente (Top 15)</div>
+      <canvas id="chartEjComponentes" style="max-height:320px"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DASHBOARD ══ -->
+<div class="tab-content active" id="tab-dashboard">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">DASHBOARD DE FALLAS Y DISPONIBILIDAD</h2>
+      <p class="page-sub" id="dashSubtitle">Cargando datos...</p>
+    </div>
+    <button class="btn-icon" onclick="openConfigPanel('dashboard')" title="Configurar vista" style="font-size:16px">⚙</button>
+  </div>
+
+  <!-- KPI Cards -->
+  <div id="dashKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:24px"></div>
+
+  <!-- Disponibilidad por Flota -->
+  <div class="card" style="padding:16px;margin-bottom:24px">
+    <div class="section-title">Disponibilidad por Flota</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tipo</th><th>Equipos</th><th>NP (h)</th><th>PL (h)</th><th>Disp%</th><th>Indisp%</th><th>Barra</th></tr></thead>
+        <tbody id="tblDispFlota"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 4 Tablas -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;align-items:start">
+    <div class="card" style="padding:16px;overflow:hidden">
+      <div class="card-title-bar"><div class="section-title">Fallas NP por Sistema</div><button class="btn-icon" onclick="toggleCardBody(this)" title="Minimizar">▼</button></div>
+      <div class="card-body-collapse"><div style="overflow-x:auto"><table style="width:100%"><thead><tr><th>Sistema</th><th>N° Fallas</th><th>Horas</th></tr></thead><tbody id="tblSistema"></tbody></table></div></div>
+    </div>
+    <div class="card" style="padding:16px;overflow:hidden">
+      <div class="card-title-bar"><div class="section-title">Fallas NP por Subsistema</div><button class="btn-icon" onclick="toggleCardBody(this)" title="Minimizar">▼</button></div>
+      <div class="card-body-collapse"><div style="overflow-x:auto"><table style="width:100%"><thead><tr><th>Subsistema</th><th>N° Fallas</th><th>Horas</th></tr></thead><tbody id="tblSubsistema"></tbody></table></div></div>
+    </div>
+    <div class="card" style="padding:16px;overflow:hidden">
+      <div class="card-title-bar"><div class="section-title">Fallas NP por Componente (Pareto)</div><button class="btn-icon" onclick="toggleCardBody(this)" title="Minimizar">▼</button></div>
+      <div class="card-body-collapse"><div style="overflow-x:auto"><table style="width:100%"><thead><tr><th>Componente</th><th>Fallas</th><th>Horas</th><th>% Acum.</th></tr></thead><tbody id="tblComponente"></tbody></table></div></div>
+    </div>
+    <div class="card" style="padding:16px;overflow:hidden">
+      <div class="card-title-bar"><div class="section-title">Fallas NP por Causa</div><button class="btn-icon" onclick="toggleCardBody(this)" title="Minimizar">▼</button></div>
+      <div class="card-body-collapse"><div style="overflow-x:auto"><table style="width:100%"><thead><tr><th>Tipo de Pérdida</th><th>N° Fallas</th><th>Horas</th></tr></thead><tbody id="tblCausa"></tbody></table></div></div>
+    </div>
+  </div>
+
+  <!-- Análisis IA Equipo Crítico -->
+  <div class="card" style="padding:16px;margin-bottom:24px" id="cardAnalisisCritico">
+    <div class="card-title-bar">
+      <div class="section-title" style="margin:0;border:none;padding:0">Análisis IA — Equipo Más Crítico</div>
+      <button class="btn-ia" id="btnAnalisisCritico" onclick="analizarEquipoCritico()">Analizar con IA</button>
+    </div>
+    <div id="iaEquipoCritico" class="ia-box" style="display:none"></div>
+  </div>
+
+  <!-- Resumen IA Flota JR -->
+  <div class="card" style="padding:16px;margin-bottom:24px" id="cardResumenFlota">
+    <div class="card-title-bar">
+      <div class="section-title" style="margin:0;border:none;padding:0">Resumen IA — Flota Completa (10 JR)</div>
+      <button class="btn-ia" id="btnResumenFlota" onclick="analizarFlotaJR()">Analizar Flota con IA</button>
+    </div>
+    <div id="iaFlotaJR" style="display:none"></div>
+  </div>
+
+  <!-- Fallas Repetitivas -->
+  <div class="card" style="padding:16px;margin-bottom:24px">
+    <div class="card-title-bar">
+      <div class="section-title" style="margin:0;border:none;padding:0">Fallas Repetitivas (≥ 2 ocurrencias mismo Equipo + Componente)</div>
+      <button class="btn-ia" id="btnAnalisisRepetitivas" onclick="analizarRepetitivas()">Analizar todas con IA</button>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>Equipo</th><th>Componente</th><th>N° Ocurrencias</th><th>Análisis IA</th></tr></thead><tbody id="tblRepetitivas"></tbody></table></div>
+    <div id="iaRepetitivas" class="ia-box" style="display:none"></div>
+  </div>
+
+  <!-- Gráficos Jack Knife + Pareto -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px">
+    <div class="card" style="padding:16px">
+      <div class="section-title">Jack Knife — N° Fallas vs MTTR por Equipo</div>
+      <canvas id="chartJackKnife" style="max-height:320px"></canvas>
+    </div>
+    <div class="card" style="padding:16px">
+      <div class="section-title">Pareto Componentes</div>
+      <canvas id="chartParetoComp" style="max-height:320px"></canvas>
+    </div>
+  </div>
+
+  <!-- Tabla Disponibilidad por Equipo -->
+  <div class="card" style="padding:16px;margin-bottom:24px">
+    <div class="section-title">Disponibilidad / Indisponibilidad por Equipo</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Equipo</th><th>N° Fallas NP</th><th>Horas NP</th><th>Disp %</th><th>Indisp %</th><th>MTTR</th><th>MTBF</th><th>Horas PL</th><th>Horas Total</th></tr></thead>
+        <tbody id="tblDispEquipo"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Gráficos Disponibilidad -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px">
+    <div class="card" style="padding:16px">
+      <div class="card-title-bar">
+        <div class="section-title" style="margin:0;border:none;padding:0">Disponibilidad % por Equipo</div>
+        <div style="display:flex;gap:4px">
+          <button class="btn-icon" style="font-size:10px;padding:2px 6px" onclick="window._dispEqOrden=window._dispEqOrden==='asc'?'desc':'asc';renderDispEqCharts()" id="btnOrdenDisp" title="Ordenar">&#9660; Mayor</button>
+        </div>
+      </div>
+      <canvas id="chartDispEquipo" style="max-height:280px"></canvas>
+    </div>
+    <div class="card" style="padding:16px">
+      <div class="card-title-bar">
+        <div class="section-title" style="margin:0;border:none;padding:0">Indisponibilidad % por Equipo</div>
+        <div style="display:flex;gap:4px">
+          <button class="btn-icon" style="font-size:10px;padding:2px 6px" onclick="window._indispEqOrden=window._indispEqOrden==='asc'?'desc':'asc';renderDispEqCharts()" id="btnOrdenIndisp" title="Ordenar">&#9660; Mayor</button>
+        </div>
+      </div>
+      <canvas id="chartIndispEquipo" style="max-height:280px"></canvas>
+    </div>
+  </div>
+
+  <!-- Mapa de Calor -->
+  <div class="card" style="padding:16px;margin-bottom:24px;overflow-x:auto">
+    <div class="section-title">Mapa de Calor — Disponibilidad % por Equipo × Semana (últimas 10 semanas)</div>
+    <div id="heatmapContainer"></div>
+  </div>
+
+  <!-- Disponibilidad por Día -->
+  <div class="card" style="padding:16px;margin-bottom:24px;overflow-x:auto">
+    <div class="card-title-bar">
+      <div class="section-title">Disponibilidad / Indisponibilidad por Día</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <label style="font-size:11px;cursor:pointer"><input type="checkbox" id="ddJR" checked onchange="renderDispDia(window._dispDiaDatos)"> JR</label>
+        <label style="font-size:11px;cursor:pointer"><input type="checkbox" id="ddJRS" checked onchange="renderDispDia(window._dispDiaDatos)"> JRS</label>
+        <label style="font-size:11px;cursor:pointer"><input type="checkbox" id="ddPICA" checked onchange="renderDispDia(window._dispDiaDatos)"> PICARROCA</label>
+        <label style="font-size:11px;cursor:pointer"><input type="checkbox" id="ddRB3" checked onchange="renderDispDia(window._dispDiaDatos)"> RB3</label>
+        <button class="btn-icon" onclick="toggleCardBody(this)" title="Minimizar">&#9660;</button>
+      </div>
+    </div>
+    <div class="card-body-collapse"><div id="tablaDispDia"></div></div>
+  </div>
+
+  <!-- EQAC levantados -->
+  <div class="card" style="padding:16px;margin-bottom:24px;overflow-x:auto">
+    <div class="card-title-bar"><div class="section-title">EQAC Levantados</div><button class="btn-icon" onclick="toggleCardBody(this)" title="Minimizar">&#9660;</button></div>
+    <div class="card-body-collapse">
+      <div id="eqacResumen" style="margin-bottom:10px;font-size:13px;color:var(--text2)"></div>
+      <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Equipo</th><th>Sistema</th><th>Subsistema</th><th>Componente</th><th>Horas</th><th>Descripcion</th></tr></thead><tbody id="tblEqac"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- TRF Tasa de Reincidencia de Fallas -->
+  <div class="card" style="padding:16px;margin-bottom:24px">
+    <div class="card-title-bar">
+      <div class="section-title" style="margin:0;border:none;padding:0">TRF — Tasa de Reincidencia de Fallas</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label style="font-size:10px;font-weight:700;color:var(--text2)">Ventana:</label>
+        <select id="trfVentana" onchange="renderTRF(filtrar())" style="font-size:11px;padding:2px 6px;border:1px solid var(--border);border-radius:4px">
+          <option value="7">7 días</option>
+          <option value="14" selected>14 días</option>
+          <option value="30">30 días</option>
+        </select>
+      </div>
+    </div>
+    <div id="trfKpi" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px"></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Equipo</th><th>Subsistema</th><th>Evento Original</th><th>Reincidencia</th><th>Días</th><th>Análisis</th></tr></thead>
+        <tbody id="tblTRF"></tbody>
+      </table>
+    </div>
+    <div id="iaTRF" class="ia-box" style="display:none;margin-top:10px"></div>
+  </div>
+
+  <!-- Top 5 Bad Actors -->
+  <div class="card" style="padding:16px;margin-bottom:24px">
+    <div class="section-title">Top 5 Bad Actors (Score = N° Fallas × Horas NP)</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Equipo</th><th>N° Fallas</th><th>Horas NP</th><th>Score</th><th>Barra</th></tr></thead>
+        <tbody id="tblBadActors"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pérdidas por Categoría + Cascada -->
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:24px">
+    <div class="card" style="padding:16px">
+      <div class="section-title">Pérdidas por Categoría — Barras apiladas % Indisp + Tendencia</div>
+      <canvas id="chartPerdCat" style="max-height:320px"></canvas>
+    </div>
+    <div class="card" style="padding:16px">
+      <div class="section-title">Cascada de Pérdidas — desde 100% Disponibilidad</div>
+      <canvas id="chartCascada" style="max-height:320px"></canvas>
+    </div>
+  </div>
+
+  <!-- Pareto Disponibilidad por Equipo -->
+  <div class="card" style="padding:16px">
+    <div class="section-title">Pareto Disponibilidad por Equipo</div>
+    <canvas id="chartParetoDisp" style="max-height:320px"></canvas>
+  </div>
+</div>
+
+<!-- ══ DISPONIBILIDAD ══ -->
+<div class="tab-content" id="tab-disponibilidad">
+  <div class="page-header">
+    <div><h2 class="page-title">Disponibilidad</h2><p class="page-sub">% disponibilidad y horas por semana</p></div>
+    <button class="btn-icon" onclick="openConfigPanel('disponibilidad')" title="Configurar vista" style="font-size:16px">⚙</button>
+  </div>
+  <div id="dispKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px"></div>
+  <div class="card" style="margin-bottom:16px;padding:16px"><div class="section-title">Disponibilidad % por Semana (últimas 20)</div><canvas id="chartDispSemana" style="max-height:280px"></canvas></div>
+  <div class="card" style="padding:16px"><div class="section-title">Horas NP + PL por Semana (barras apiladas)</div><canvas id="chartHorasSemana" style="max-height:280px"></canvas></div>
+</div>
+
+<!-- ══ DETENCIONES ══ -->
+<div class="tab-content" id="tab-detenciones">
+  <div class="page-header">
+    <div><h2 class="page-title">Detenciones</h2><p class="page-sub">Análisis de detenciones filtradas</p></div>
+    <button class="btn-icon" onclick="openConfigPanel('detenciones')" title="Configurar vista" style="font-size:16px">⚙</button>
+  </div>
+  <div id="detKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px"></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:16px">
+    <div class="card" style="padding:16px"><div class="section-title">NP por Subsistema (Top 10)</div><canvas id="chartDetSubsistema" style="max-height:280px"></canvas></div>
+    <div class="card" style="padding:16px"><div class="section-title">Horas por Equipo</div><canvas id="chartDetEquipo" style="max-height:280px"></canvas></div>
+  </div>
+  <!-- Grilla Semanal por Turno (visible cuando hay equipo específico) -->
+  <div class="card" style="padding:16px;margin-bottom:16px;display:none" id="cardGrillaTurno">
+    <div class="card-title-bar">
+      <div class="section-title" style="margin:0;border:none;padding:0" id="grillaTurnoTitle">Grilla Semanal por Turno</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Día</th><th>Turno A</th><th>Turno B</th></tr></thead>
+        <tbody id="tblGrillaTurno"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" style="padding:16px">
+    <div class="section-title">Últimas 30 Detenciones</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Equipo</th><th>Fecha</th><th>Semana</th><th>Turno</th><th>Tipo</th><th>Subsistema</th><th>Horas</th><th>Evento</th></tr></thead>
+        <tbody id="tablaDetenciones"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SISTEMAS ══ -->
+<div class="tab-content" id="tab-sistemas">
+  <div class="page-header">
+    <div><h2 class="page-title">Análisis por Sistema</h2><p class="page-sub">Detenciones NP agrupadas por subsistema</p></div>
+    <button class="btn-icon" onclick="openConfigPanel('sistemas')" title="Configurar vista" style="font-size:16px">⚙</button>
+  </div>
+  <div id="sistKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px"></div>
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px">
+    <div class="card" style="padding:16px">
+      <div class="section-title">Horas NP por Subsistema</div>
+      <canvas id="chartSistHoras" style="max-height:320px"></canvas>
+    </div>
+    <div class="card" style="padding:16px">
+      <div class="section-title">Distribución % por Subsistema</div>
+      <canvas id="chartSistPie" style="max-height:320px"></canvas>
+    </div>
+  </div>
+  <div class="card" style="padding:16px">
+    <div class="section-title">Detalle por Subsistema</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Subsistema</th><th>Fallas</th><th>Horas NP</th><th>% del Total</th><th>Equipos afectados</th><th>Componentes</th></tr></thead>
+        <tbody id="tablaSistemas"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EQUIPOS ══ -->
+<div class="tab-content" id="tab-equipos">
+  <div class="page-header">
+    <div><h2 class="page-title">Análisis por Equipo</h2><p class="page-sub">Pareto de disponibilidad e indisponibilidad</p></div>
+    <button class="btn-icon" onclick="openConfigPanel('equipos')" title="Configurar vista" style="font-size:16px">⚙</button>
+  </div>
+  <div class="card" style="margin-bottom:16px;padding:16px"><div class="section-title">Pareto: Horas NP por Equipo</div><canvas id="chartEqPareto" style="max-height:320px"></canvas></div>
+  <div class="card" style="padding:16px">
+    <div class="section-title">Resumen por Equipo</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Equipo</th><th>Tipo</th><th>Registros</th><th>Horas NP</th><th>Horas PL</th><th>Total Horas</th><th>Estado</th></tr></thead>
+        <tbody id="tablaEquipos"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ BASE DE DATOS ══ -->
+<div class="tab-content" id="tab-bd">
+  <div class="page-header">
+    <div><h2 class="page-title">Base de Datos</h2><p class="page-sub">Estado del servidor y conexión</p></div>
+  </div>
+  <div class="card" style="max-width:580px;padding:20px">
+    <div id="bdStatus" style="padding:16px;background:var(--surface2);border-radius:6px;margin-bottom:16px;font-size:13px;color:var(--text2)">Verificando conexión...</div>
+    <div id="bdDetalle" style="display:none;padding:12px;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;border-radius:6px;font-size:13px"></div>
+  </div>
+  <div class="card sb-admin-only" style="max-width:580px;padding:20px;margin-top:16px;display:none">
+    <div class="section-title">Actualizar Datos (Excel)</div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Sube el Excel descargado de SharePoint. Solo se agregan las semanas nuevas.</p>
+    <div style="display:flex;flex-direction:column;gap:10px;max-width:400px">
+      <input type="file" id="excelFile" accept=".xlsx,.xls" style="font-size:13px"/>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="subirExcel('incremental')">Subir (solo nuevos)</button>
+        <button class="btn btn-ghost" onclick="subirExcel('full')">Reemplazar todo</button>
+      </div>
+      <div id="uploadMsg" style="font-size:12px;display:none;padding:10px;border-radius:6px"></div>
+      <div id="uploadProgress" style="display:none;font-size:12px;color:var(--text2)">Subiendo y procesando...</div>
+    </div>
+  </div>
+  <div class="card" style="max-width:580px;padding:20px;margin-top:16px">
+    <div class="section-title">Cambiar Contraseña</div>
+    <div style="display:flex;flex-direction:column;gap:10px;max-width:300px">
+      <input type="password" id="pwActual" placeholder="Contraseña actual" style="padding:8px 10px;font-size:13px"/>
+      <input type="password" id="pwNueva" placeholder="Nueva contraseña (mín. 6 caracteres)" style="padding:8px 10px;font-size:13px"/>
+      <button class="btn btn-primary" onclick="cambiarPassword()">Cambiar contraseña</button>
+      <div id="pwMsg" style="font-size:12px;display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB POWER BI -->
+<div class="tab-content" id="tab-powerbi">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">POWER BI — ESTADO EQUIPOS EN VIVO</h2>
+      <p class="page-sub" id="pbiSubtitle">Cargando datos Power BI...</p>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button class="btn-icon" onclick="openConfigPanel('powerbi')" title="Configurar vista" style="font-size:16px">⚙</button>
+      <button class="btn btn-primary" onclick="cargarPowerBI()" style="font-size:12px">Actualizar</button>
+    </div>
+  </div>
+  <!-- KPIs -->
+  <div class="kpi-grid" id="pbiKpis"></div>
+  <!-- Semáforos estado actual -->
+  <div class="card" style="margin-top:16px">
+    <div class="card-title-bar">
+      <div class="section-title">Semáforo Estado Actual</div>
+      <button class="btn-icon" onclick="toggleCardBody(this)" title="Minimizar">&#9660;</button>
+    </div>
+    <div id="pbiSemaforo" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;padding:4px 0"></div>
+  </div>
+  <!-- Filtro tipo equipo -->
+  <div class="card" style="margin-top:16px">
+    <div class="card-title-bar">
+      <div class="section-title">Filtro tipo equipo</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0;align-items:center">
+      <label class="filtro-chip"><input type="checkbox" id="pbiJR" checked onchange="renderPBI()"/> JR</label>
+      <label class="filtro-chip"><input type="checkbox" id="pbiJRS" checked onchange="renderPBI()"/> JRS</label>
+      <label class="filtro-chip"><input type="checkbox" id="pbiRB3" checked onchange="renderPBI()"/> RB3</label>
+      <label class="filtro-chip"><input type="checkbox" id="pbiMT" checked onchange="renderPBI()"/> MT</label>
+      <label class="filtro-chip"><input type="checkbox" id="pbiSoloFS" onchange="renderPBI()"/> Solo F/S</label>
+      <span style="margin-left:16px;font-size:12px;color:var(--text2)">Semana:</span>
+      <select id="pbiSemana" onchange="renderPBI()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--bg1)">
+        <option value="">Todas</option>
+      </select>
+    </div>
+  </div>
+  <!-- Tabla estado -->
+  <div class="card" style="margin-top:16px">
+    <div class="card-title-bar">
+      <div class="section-title">Estado Actual de Equipos</div>
+      <button class="btn-icon" onclick="toggleCardBody(this)" title="Minimizar">&#9660;</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%">
+        <thead><tr><th>Equipo</th><th>Estado</th><th>Tipo</th><th>Ubicación</th><th>Observación</th><th>OT</th><th>Comentario</th><th>Fecha</th></tr></thead>
+        <tbody id="tblPbiEstado"></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- Disponibilidad por tipo -->
+  <div class="card" style="margin-top:16px">
+    <div class="card-title-bar">
+      <div class="section-title">Disponibilidad por Tipo (último estado)</div>
+      <button class="btn-icon" onclick="toggleCardBody(this)" title="Minimizar">&#9660;</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%">
+        <thead><tr><th>Tipo</th><th>Total</th><th>Operativos</th><th>F/S</th><th>Disp%</th><th>Barra</th></tr></thead>
+        <tbody id="tblPbiDisp"></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- (Disponibilidad Diaria eliminada) -->
+  <!-- Hora a Hora Jumbos -->
+  <div class="card" style="margin-top:16px">
+    <div class="card-title-bar">
+      <div class="section-title">Estado Hora a Hora — Jumbos</div>
+      <span id="pbiHHFecha" style="font-size:12px;color:var(--text2);margin-left:8px"></span>
+      <button class="btn-icon" onclick="toggleCardBody(this)" title="Minimizar">&#9660;</button>
+    </div>
+    <div style="overflow-x:auto" id="pbiHoraHora"></div>
+  </div>
+  <!-- Mapa Semanal Turno A/B -->
+  <div class="card" style="margin-top:16px">
+    <div class="card-title-bar">
+      <div class="section-title">Mapa Semanal por Turno</div>
+      <button class="btn-icon" onclick="toggleCardBody(this)" title="Minimizar">&#9660;</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0;align-items:center">
+      <span style="font-size:12px;color:var(--text2)">Semana:</span>
+      <select id="pbiMapaSemana" onchange="renderMapaTurno()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--bg1)">
+        <option value="40">S40 (sep 28 - oct 4)</option>
+        <option value="39" selected>S39 (sep 21 - sep 27)</option>
+        <option value="38">S38 (sep 14 - sep 20)</option>
+        <option value="37">S37 (sep 7 - sep 13)</option>
+      </select>
+      <span style="margin-left:12px;font-size:12px;color:var(--text2)">Equipo:</span>
+      <select id="pbiMapaEquipo" onchange="renderMapaTurno()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--bg1)">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div style="overflow-x:auto" id="pbiMapaTurno"></div>
+  </div>
+</div>
+
+<!-- TAB USUARIOS (admin) -->
+<div class="tab-content" id="tab-usuarios">
+  <div class="page-header">
+    <div><h2 class="page-title">Gestión de Usuarios</h2><p class="page-sub">Solo administradores</p></div>
+    <button class="btn btn-primary" onclick="toggleFormNuevoUsuario()">+ Nuevo Usuario</button>
+  </div>
+  <div id="formNuevoUsuario" style="display:none" class="card" style="max-width:460px;padding:20px;margin-bottom:20px">
+    <div class="section-title">Crear Usuario</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:3px">USUARIO</label><input type="text" id="nuUsername" placeholder="nombre.apellido" style="padding:8px 10px;font-size:13px;width:100%"/></div>
+      <div><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:3px">NOMBRE COMPLETO</label><input type="text" id="nuNombre" placeholder="Nombre Apellido" style="padding:8px 10px;font-size:13px;width:100%"/></div>
+      <div><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:3px">CONTRASEÑA</label><input type="password" id="nuPassword" placeholder="mín. 6 caracteres" style="padding:8px 10px;font-size:13px;width:100%"/></div>
+      <div><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:3px">CARGO</label><input type="text" id="nuCargo" placeholder="Ej: Jefe de Mantención" style="padding:8px 10px;font-size:13px;width:100%"/></div>
+      <div><label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:3px">ROL</label>
+        <select id="nuRol" style="padding:8px 10px;font-size:13px;width:100%"><option value="viewer">Viewer</option><option value="admin">Admin</option></select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="crearUsuario()">Crear</button>
+      <button class="btn btn-ghost" onclick="toggleFormNuevoUsuario()">Cancelar</button>
+    </div>
+    <div id="nuMsg" style="font-size:12px;margin-top:8px;display:none"></div>
+  </div>
+  <div class="card" style="padding:16px">
+    <div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Nombre</th><th>Cargo</th><th>Rol</th><th>Estado</th><th>Creado</th><th>Acciones</th></tr></thead><tbody id="tblUsuarios"></tbody></table></div>
+  </div>
+  <!-- Config por defecto (admin) -->
+  <div class="card sb-admin-only" style="padding:16px;margin-top:16px;display:none">
+    <div class="card-title-bar">
+      <div class="section-title" style="margin:0;border:none;padding:0">Configuracion por Defecto del Dashboard</div>
+    </div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Define que elementos ven los usuarios nuevos por defecto. Los usuarios pueden personalizar su vista despues.</p>
+    <div id="defaultsContainer" style="display:grid;grid-template-columns:1fr 1fr;gap:16px"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btn-primary" onclick="saveDefaults()">Guardar Defaults</button>
+      <button class="btn btn-ghost" onclick="loadDefaults()">Recargar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIG DASHBOARD -->
+<div id="modalConfig" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);align-items:center;justify-content:center">
+  <div style="background:var(--surface);border-radius:12px;padding:24px;max-width:480px;width:95%;box-shadow:0 8px 40px rgba(0,0,0,.4);max-height:80vh;overflow-y:auto">
+    <div style="font-size:15px;font-weight:800;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+      <span id="configTitle">Configurar Vista</span>
+      <button onclick="closeConfigPanel()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text2)">✕</button>
+    </div>
+    <div style="margin-bottom:10px;display:flex;gap:8px">
+      <button class="btn-icon" onclick="configToggleAll(true)" style="font-size:11px">Marcar todos</button>
+      <button class="btn-icon" onclick="configToggleAll(false)" style="font-size:11px">Desmarcar todos</button>
+    </div>
+    <div id="configCheckboxes" style="display:flex;flex-direction:column;gap:6px"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-primary" onclick="saveConfig()">Guardar</button>
+      <button class="btn btn-ghost" onclick="closeConfigPanel()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+</div>
+
+<script>
+// ── AUTH ──
+var TOKEN = localStorage.getItem('kpi_token') || '';
+var SESSION = JSON.parse(localStorage.getItem('kpi_session') || 'null');
+
+async function loginSubmit() {
+  var u = document.getElementById('loginUser').value.trim();
+  var p = document.getElementById('loginPass').value;
+  var errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+  try {
+    var res = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username:u, password:p}) });
+    var data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || 'Error de autenticación'; errEl.style.display = 'block'; document.getElementById('loginPass').value = ''; return; }
+    TOKEN = data.token;
+    SESSION = data;
+    localStorage.setItem('kpi_token', TOKEN);
+    localStorage.setItem('kpi_session', JSON.stringify(data));
+    postLogin();
+  } catch(e) {
+    errEl.textContent = 'No se pudo conectar al servidor'; errEl.style.display = 'block';
+  }
+}
+
+async function postLogin() {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('sfNombre').textContent = SESSION.nombre;
+  document.getElementById('sfCargo').textContent = SESSION.cargo || '';
+  document.getElementById('filtrosGlobales').style.display = 'block';
+  if (SESSION.rol === 'admin') document.querySelectorAll('.sb-admin-only').forEach(function(el){ el.style.display = ''; });
+  await loadDashboardConfig();
+  cargarDatos();
+}
+
+function cerrarSesion() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  localStorage.removeItem('kpi_token');
+  localStorage.removeItem('kpi_session');
+  location.reload();
+}
+
+// ── DASHBOARD CONFIG POR USUARIO ──
+var DASH_ELEMENTS = {
+  dashboard: {
+    dashKpis:'KPIs Principales', tblDispFlota:'Disponibilidad por Flota',
+    tblSistema:'Fallas por Sistema', tblSubsistema:'Fallas por Subsistema',
+    tblComponente:'Pareto Componentes', tblCausa:'Fallas por Causa',
+    cardAnalisisCritico:'Analisis IA Equipo Critico', cardResumenFlota:'Resumen IA Flota JR', tblRepetitivas:'Fallas Repetitivas',
+    chartJackKnife:'Jack Knife', chartParetoComp:'Pareto Componentes (Grafico)',
+    tblDispEquipo:'Tabla Disp/Indisp por Equipo', chartDispEquipo:'Grafico Disponibilidad % por Equipo',
+    chartIndispEquipo:'Grafico Indisponibilidad % por Equipo', heatmapContainer:'Mapa de Calor',
+    tablaDispDia:'Disponibilidad por Dia', tblEqac:'EQAC Levantados',
+    tblTRF:'TRF Reincidencia de Fallas', tblBadActors:'Top 5 Bad Actors',
+    chartPerdCat:'Perdidas por Categoria', chartCascada:'Cascada de Perdidas',
+    chartParetoDisp:'Pareto Disponibilidad por Equipo'
+  },
+  disponibilidad: {
+    dispKpis:'KPIs', chartDispSemana:'Disponibilidad % por Semana', chartHorasSemana:'Horas NP+PL por Semana'
+  },
+  detenciones: {
+    detKpis:'KPIs', chartDetSubsistema:'NP por Subsistema', chartDetEquipo:'Horas por Equipo',
+    cardGrillaTurno:'Grilla Semanal por Turno', tablaDetenciones:'Ultimas 30 Detenciones'
+  },
+  sistemas: {
+    sistKpis:'KPIs', chartSistHoras:'Horas NP por Subsistema', chartSistPie:'Distribucion % por Subsistema',
+    tablaSistemas:'Detalle por Subsistema'
+  },
+  equipos: {
+    chartEqPareto:'Pareto Horas NP', tablaEquipos:'Resumen por Equipo'
+  },
+  ejecutivo: {
+    ejKpiRow:'KPIs y Donuts', ejCardDispDia:'Disponibilidad por Dia',
+    ejCardTipoDet:'Horas por Tipo Detencion', ejCardSistEq:'Horas por Sistema/Equipo',
+    ejCardComponentes:'Distribucion por Componente'
+  },
+  powerbi: {
+    pbiKpis:'KPIs', pbiSemaforo:'Semaforo Estado Actual', tblPbiEstado:'Estado Actual de Equipos',
+    tblPbiDisp:'Disponibilidad por Tipo', pbiHoraHora:'Estado Hora a Hora', pbiMapaTurno:'Mapa Semanal por Turno'
+  }
+};
+var _configTab = null;
+
+async function loadDashboardConfig() {
+  try {
+    var res = await apiCall('GET', '/api/dashboard-config');
+    window.DASH_CONFIG = mergeConfig(res.defaults, res.config);
+  } catch(e) { window.DASH_CONFIG = {}; }
+}
+
+function mergeConfig(defaults, userConfig) {
+  var result = {};
+  Object.keys(DASH_ELEMENTS).forEach(function(tab) {
+    result[tab] = {};
+    Object.keys(DASH_ELEMENTS[tab]).forEach(function(el) {
+      var def = (defaults && defaults[tab]) ? defaults[tab][el] : undefined;
+      var usr = (userConfig && userConfig[tab]) ? userConfig[tab][el] : undefined;
+      result[tab][el] = usr !== undefined ? usr : (def !== undefined ? def : true);
+    });
+  });
+  return result;
+}
+
+function applyDashConfig(tabKey) {
+  var cfg = (window.DASH_CONFIG || {})[tabKey] || {};
+  Object.keys(cfg).forEach(function(elId) {
+    var el = document.getElementById(elId);
+    if (!el) return;
+    var card = el.closest('.card') || el;
+    if (cfg[elId] === false) card.classList.add('cfg-hidden');
+    else card.classList.remove('cfg-hidden');
+  });
+}
+
+function openConfigPanel(tabKey) {
+  _configTab = tabKey;
+  var cfg = (window.DASH_CONFIG || {})[tabKey] || {};
+  var elems = DASH_ELEMENTS[tabKey] || {};
+  document.getElementById('configTitle').textContent = 'Configurar Vista — ' + tabKey.charAt(0).toUpperCase() + tabKey.slice(1);
+  var html = '';
+  Object.keys(elems).forEach(function(id) {
+    var checked = cfg[id] !== false ? 'checked' : '';
+    html += '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:4px 0">'
+      + '<input type="checkbox" data-cfg-id="' + id + '" ' + checked + ' style="width:16px;height:16px;accent-color:var(--primary)"/> '
+      + elems[id] + '</label>';
+  });
+  document.getElementById('configCheckboxes').innerHTML = html;
+  var m = document.getElementById('modalConfig');
+  m.style.display = 'flex';
+}
+
+function closeConfigPanel() {
+  document.getElementById('modalConfig').style.display = 'none';
+  _configTab = null;
+}
+
+function configToggleAll(state) {
+  document.querySelectorAll('#configCheckboxes input[type=checkbox]').forEach(function(cb) { cb.checked = state; });
+}
+
+async function saveConfig() {
+  if (!_configTab) return;
+  var cfg = window.DASH_CONFIG || {};
+  cfg[_configTab] = {};
+  document.querySelectorAll('#configCheckboxes input[data-cfg-id]').forEach(function(cb) {
+    cfg[_configTab][cb.dataset.cfgId] = cb.checked;
+  });
+  window.DASH_CONFIG = cfg;
+  await apiCall('PUT', '/api/dashboard-config', { config: cfg });
+  closeConfigPanel();
+  applyDashConfig(_configTab);
+}
+
+async function loadDefaults() {
+  var res = await apiCall('GET', '/api/dashboard-defaults');
+  var cfg = res.config || {};
+  var cont = document.getElementById('defaultsContainer');
+  var html = '';
+  Object.keys(DASH_ELEMENTS).forEach(function(tab) {
+    html += '<div><div style="font-size:12px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:6px">' + tab + '</div>';
+    Object.keys(DASH_ELEMENTS[tab]).forEach(function(id) {
+      var checked = (!cfg[tab] || cfg[tab][id] !== false) ? 'checked' : '';
+      html += '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding:2px 0">'
+        + '<input type="checkbox" data-def-tab="' + tab + '" data-def-id="' + id + '" ' + checked + ' style="width:14px;height:14px;accent-color:var(--primary)"/> '
+        + DASH_ELEMENTS[tab][id] + '</label>';
+    });
+    html += '</div>';
+  });
+  cont.innerHTML = html;
+}
+
+async function saveDefaults() {
+  var cfg = {};
+  document.querySelectorAll('#defaultsContainer input[data-def-id]').forEach(function(cb) {
+    var tab = cb.dataset.defTab;
+    if (!cfg[tab]) cfg[tab] = {};
+    cfg[tab][cb.dataset.defId] = cb.checked;
+  });
+  await apiCall('PUT', '/api/dashboard-defaults', { config: cfg });
+  alert('Defaults guardados');
+}
+
+async function cambiarPassword() {
+  var actual = document.getElementById('pwActual').value;
+  var nueva = document.getElementById('pwNueva').value;
+  var msg = document.getElementById('pwMsg');
+  var res = await apiCall('POST', '/api/cambiar-password', {actual, nueva});
+  msg.style.display = 'block';
+  if (res.ok) { msg.style.color = '#16a34a'; msg.textContent = 'Contrasena actualizada correctamente.'; document.getElementById('pwActual').value=''; document.getElementById('pwNueva').value=''; }
+  else { msg.style.color = '#dc2626'; msg.textContent = res.error || 'Error'; }
+}
+
+async function subirExcel(mode) {
+  var fileInput = document.getElementById('excelFile');
+  var msg = document.getElementById('uploadMsg');
+  var prog = document.getElementById('uploadProgress');
+  if (!fileInput.files.length) { msg.style.display='block'; msg.style.background='#fef2f2'; msg.style.color='#dc2626'; msg.textContent='Selecciona un archivo Excel'; return; }
+  if (mode === 'full' && !confirm('Esto borrara TODOS los datos y los reemplazara con el Excel. Continuar?')) return;
+  msg.style.display='none';
+  prog.style.display='block';
+  var fd = new FormData();
+  fd.append('archivo', fileInput.files[0]);
+  fd.append('mode', mode);
+  try {
+    var res = await fetch('/api/upload-excel', { method: 'POST', headers: { 'Authorization': 'Bearer ' + TOKEN }, body: fd });
+    var data = await res.json();
+    prog.style.display='none';
+    msg.style.display='block';
+    if (data.ok) {
+      msg.style.background='#dcfce7'; msg.style.color='#166534';
+      msg.textContent = data.mensaje + ' | Total en BD: ' + (data.total||0).toLocaleString() + ' registros';
+      fileInput.value = '';
+      cargarDatos();
+    } else {
+      msg.style.background='#fef2f2'; msg.style.color='#dc2626';
+      msg.textContent = 'Error: ' + (data.error||'desconocido');
+    }
+  } catch(e) { prog.style.display='none'; msg.style.display='block'; msg.style.background='#fef2f2'; msg.style.color='#dc2626'; msg.textContent='Error de conexion: '+e.message; }
+}
+
+// ── GLOBAL STATE ──
+var DB_DATA = { loaded: false, detenciones: [], equipos: [] };
+var CHARTS = {};
+
+// ── API HELPER ──
+async function apiCall(method, url, body) {
+  var opts = { method: method, headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  var res = await fetch(url, opts);
+  return res.json();
+}
+
+// ── DATA LOADER ──
+async function cargarDatos() {
+  var f = getFiltros();
+  var tipos = f.tipos.join(',');
+  var eqParam = f.equiposEsp.length ? '&equipo=' + encodeURIComponent(f.equiposEsp[0]) : '';
+  var yearParam = (f.fechaDesde || f.fechaHasta) ? 0 : f.year;
+  var url = '/api/detenciones?year=' + yearParam + '&tipos=' + tipos + eqParam;
+  try {
+    document.getElementById('sfBD').textContent = 'Cargando...';
+    var datos = await apiCall('GET', url);
+    if (!Array.isArray(datos)) throw new Error(datos.error || 'Respuesta inválida');
+    DB_DATA.detenciones = datos;
+    DB_DATA.loaded = true;
+    // Equipos únicos para el selector
+    DB_DATA.equipos = [...new Set(datos.map(function(d){ return d.equipo; }))].filter(Boolean).sort();
+    sincronizarEqCheck();
+    document.getElementById('sfBD').textContent = datos.length.toLocaleString() + ' reg.';
+    renderTab(document.querySelector('[data-tab].active')?.getAttribute('data-tab') || 'dashboard');
+    cargarStatusBD();
+  } catch(e) {
+    document.getElementById('sfBD').textContent = 'Error';
+    console.error(e);
+  }
+}
+
+async function cargarStatusBD() {
+  try {
+    var s = await apiCall('GET', '/api/status');
+    document.getElementById('bdStatus').textContent = 'Servidor conectado.';
+    document.getElementById('bdStatus').style.background = '#dcfce7';
+    document.getElementById('bdStatus').style.color = '#166534';
+    document.getElementById('bdDetalle').style.display = 'block';
+    document.getElementById('bdDetalle').innerHTML = '<strong>Registros:</strong> ' + (s.registros||0).toLocaleString() +
+      ' &nbsp;|&nbsp; <strong>Equipos:</strong> ' + (s.equipos||0) +
+      ' &nbsp;|&nbsp; <strong>Años:</strong> ' + (s.anios||[]).join(', ');
+  } catch(e) {
+    document.getElementById('bdStatus').textContent = 'No se pudo conectar al servidor.';
+  }
+}
+
+// ── POWER BI ──
+var PBI_DATA = null;
+var PBI_ACT = null;
+var PBI_DISP = null;
+var PBI_HH = null;
+var PBI_HH_SEM = null;
+
+async function cargarPowerBI() {
+  try {
+    document.getElementById('pbiSubtitle').textContent = 'Cargando...';
+    var [rEst, rAct, rDisp, rHH, rHHSem] = await Promise.all([
+      fetch('/api/powerbi-estado'),
+      fetch('/api/powerbi-actividades').catch(function() { return { ok: false }; }),
+      fetch('/api/powerbi-disponibilidad').catch(function() { return { ok: false }; }),
+      fetch('/api/powerbi-horahora').catch(function() { return { ok: false }; }),
+      fetch('/api/powerbi-horahora?semana=1').catch(function() { return { ok: false }; })
+    ]);
+    if (!rEst.ok) throw new Error('Sin datos Power BI');
+    PBI_DATA = await rEst.json();
+    PBI_ACT = rAct.ok ? await rAct.json() : null;
+    PBI_DISP = rDisp.ok ? await rDisp.json() : null;
+    PBI_HH = rHH.ok ? await rHH.json() : null;
+    PBI_HH_SEM = rHHSem.ok ? await rHHSem.json() : null;
+    // Poblar semanas
+    var sel = document.getElementById('pbiSemana');
+    sel.innerHTML = '<option value="">Todas</option>';
+    if (PBI_DISP && PBI_DISP.semanas) {
+      PBI_DISP.semanas.forEach(function(s) {
+        sel.innerHTML += '<option value="' + s + '">S' + s + '</option>';
+      });
+    }
+    document.getElementById('pbiSubtitle').textContent = 'Actualizado: ' + (PBI_DATA.timestamp || '—') + ' · ' + PBI_DATA.registros.length + ' registros';
+    renderPBI();
+  } catch(e) {
+    document.getElementById('pbiSubtitle').textContent = 'Error: ' + e.message;
+    document.getElementById('pbiKpis').innerHTML = '<div style="color:var(--text2);padding:20px">No hay datos Power BI. Ejecuta: python3 powerbi_scrape.py --login && python3 powerbi_scrape.py && python3 powerbi_parse.py</div>';
+  }
+}
+
+function pbiTipo(eq) {
+  if (!eq) return 'OTRO';
+  if (eq.startsWith('JRS')) return 'JRS';
+  if (eq.startsWith('JR')) return 'JR';
+  if (eq.startsWith('RB')) return 'RB3';
+  if (eq.startsWith('MT')) return 'MT';
+  return 'OTRO';
+}
+
+function renderPBI() {
+  applyDashConfig('powerbi');
+  if (!PBI_DATA) return;
+  var tipos = [];
+  if (document.getElementById('pbiJR').checked) tipos.push('JR');
+  if (document.getElementById('pbiJRS').checked) tipos.push('JRS');
+  if (document.getElementById('pbiRB3').checked) tipos.push('RB3');
+  if (document.getElementById('pbiMT').checked) tipos.push('MT');
+  var soloFS = document.getElementById('pbiSoloFS').checked;
+  var semSel = document.getElementById('pbiSemana').value;
+
+  // Último registro por equipo
+  var byEq = {};
+  PBI_DATA.registros.forEach(function(r) {
+    var eq = r.equipo;
+    if (!eq) return;
+    if (!byEq[eq]) byEq[eq] = r;
+  });
+  var equipos = Object.values(byEq);
+
+  // Filtrar por tipo (excluir LE y LH)
+  var filtered = equipos.filter(function(r) {
+    var t = pbiTipo(r.equipo);
+    if (t === 'OTRO') return false;
+    if (tipos.indexOf(t) === -1) return false;
+    if (soloFS && r.estado !== 'Fuera de servicio') return false;
+    return true;
+  });
+
+  var totalOp = filtered.filter(function(r) { return r.estado === 'Operativo'; }).length;
+  var totalFS = filtered.filter(function(r) { return r.estado === 'Fuera de servicio'; }).length;
+  var dispPct = filtered.length > 0 ? (totalOp / filtered.length * 100) : 100;
+
+  // KPIs
+  document.getElementById('pbiKpis').innerHTML =
+    kpiCard('EQUIPOS TOTAL', filtered.length, 'filtrados por tipo', 'var(--primary)', '') +
+    kpiCard('OPERATIVOS', totalOp, 'en producción', '#16a34a', '') +
+    kpiCard('FUERA DE SERVICIO', totalFS, 'en taller o terreno', '#dc2626', '') +
+    kpiCard('DISPONIBILIDAD', dispPct.toFixed(1) + '%', 'operativos / total', dispColor(dispPct), '');
+
+  // Semáforos
+  var semHtml = sortedEq !== undefined ? '' : '';
+  var semSorted = filtered.slice().sort(function(a, b) { return a.equipo.localeCompare(b.equipo); });
+  semHtml = semSorted.map(function(r) {
+    var isFS = r.estado === 'Fuera de servicio';
+    var bg = isFS ? '#dc2626' : '#16a34a';
+    var actLabel = r.actividad === 'NP' ? 'NP' : r.actividad === 'PL' ? 'PL' : '';
+    var actColor = r.actividad === 'NP' ? '#fca5a5' : r.actividad === 'PL' ? '#fde68a' : 'transparent';
+    return '<div style="text-align:center;border-radius:8px;padding:8px 4px;background:var(--bg1);border:2px solid ' + bg + '">' +
+      '<div style="width:18px;height:18px;border-radius:50%;background:' + bg + ';margin:0 auto 4px;box-shadow:0 0 6px ' + bg + '"></div>' +
+      '<div style="font-weight:700;font-size:11px">' + r.equipo + '</div>' +
+      (actLabel ? '<div style="font-size:9px;margin-top:2px;background:' + actColor + ';border-radius:4px;padding:1px 4px;display:inline-block">' + actLabel + '</div>' : '') +
+      '</div>';
+  }).join('');
+  document.getElementById('pbiSemaforo').innerHTML = semHtml;
+
+  // Tabla estado
+  var sortedEq = filtered.sort(function(a, b) {
+    if (a.estado === 'Fuera de servicio' && b.estado !== 'Fuera de servicio') return -1;
+    if (a.estado !== 'Fuera de servicio' && b.estado === 'Fuera de servicio') return 1;
+    return a.equipo.localeCompare(b.equipo);
+  });
+
+  var html = sortedEq.map(function(r) {
+    var isFS = r.estado === 'Fuera de servicio';
+    var bg = isFS ? '#fef2f2' : '';
+    var estadoBadge = isFS
+      ? '<span style="background:#dc2626;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">F/S</span>'
+      : '<span style="background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">OP</span>';
+    var actBadge = r.actividad === 'NP' ? '<span style="color:#dc2626;font-weight:700">NP</span>' : r.actividad === 'PL' ? '<span style="color:#d97706;font-weight:700">PL</span>' : '';
+    return '<tr style="background:' + bg + '">' +
+      '<td><strong>' + (r.equipo || '') + '</strong></td>' +
+      '<td style="text-align:center">' + estadoBadge + '</td>' +
+      '<td style="text-align:center">' + actBadge + '</td>' +
+      '<td>' + (r.ubicacion || '') + '</td>' +
+      '<td style="max-width:250px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + (r.observacion || '').replace(/"/g, '&quot;') + '">' + (r.observacion || '') + '</td>' +
+      '<td style="font-size:11px">' + (r.ot || '') + '</td>' +
+      '<td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px" title="' + (r.comentario || '').replace(/"/g, '&quot;') + '">' + (r.comentario || '') + '</td>' +
+      '<td style="font-size:11px;white-space:nowrap">' + (r.fecha || '') + '</td>' +
+      '</tr>';
+  }).join('');
+  document.getElementById('tblPbiEstado').innerHTML = html || '<tr><td colspan="8" style="color:var(--text2);text-align:center">Sin datos</td></tr>';
+
+  // Disponibilidad por tipo
+  var byTipo = {};
+  equipos.forEach(function(r) {
+    var t = pbiTipo(r.equipo);
+    if (t === 'OTRO') return;
+    if (!byTipo[t]) byTipo[t] = { total: 0, op: 0, fs: 0 };
+    byTipo[t].total++;
+    if (r.estado === 'Operativo') byTipo[t].op++;
+    else byTipo[t].fs++;
+  });
+
+  var tiposOrden = ['JR', 'JRS', 'RB3', 'MT'];
+  var dispHtml = '';
+  var gTotal = 0, gOp = 0, gFS = 0;
+  tiposOrden.forEach(function(t) {
+    var d = byTipo[t];
+    if (!d) return;
+    var dp = d.total > 0 ? (d.op / d.total * 100) : 100;
+    var color = dp >= 80 ? '#16a34a' : dp >= 60 ? '#d97706' : '#dc2626';
+    var barW = d.total > 0 ? (d.fs / d.total * 100) : 0;
+    dispHtml += '<tr><td><strong>' + t + '</strong></td>' +
+      '<td style="text-align:center">' + d.total + '</td>' +
+      '<td style="text-align:center;color:#16a34a;font-weight:700">' + d.op + '</td>' +
+      '<td style="text-align:center;color:#dc2626;font-weight:700">' + d.fs + '</td>' +
+      '<td style="text-align:center;font-weight:800;color:' + color + '">' + dp.toFixed(1) + '%</td>' +
+      '<td><div class="pareto-bar-wrap"><div class="pareto-bar" style="width:' + barW + '%;background:#dc2626"></div></div></td></tr>';
+    gTotal += d.total; gOp += d.op; gFS += d.fs;
+  });
+  var gDisp = gTotal > 0 ? (gOp / gTotal * 100) : 100;
+  var gColor = gDisp >= 80 ? '#16a34a' : gDisp >= 60 ? '#d97706' : '#dc2626';
+  dispHtml += '<tr style="border-top:2px solid var(--border);font-weight:800"><td>TOTAL</td>' +
+    '<td style="text-align:center">' + gTotal + '</td>' +
+    '<td style="text-align:center;color:#16a34a">' + gOp + '</td>' +
+    '<td style="text-align:center;color:#dc2626">' + gFS + '</td>' +
+    '<td style="text-align:center;color:' + gColor + '">' + gDisp.toFixed(1) + '%</td><td></td></tr>';
+  document.getElementById('tblPbiDisp').innerHTML = dispHtml;
+
+  // Hora a Hora grid (hoy)
+  var hhEl = document.getElementById('pbiHoraHora');
+  var fechaEl = document.getElementById('pbiHHFecha');
+  if (PBI_HH && PBI_HH.equipos && PBI_HH.equipos.length > 0) {
+    var horas = PBI_HH.horas || [];
+    var eqs = PBI_HH.equipos;
+    var hoy = PBI_HH.fecha || new Date().toISOString().slice(0,10);
+    fechaEl.textContent = '(' + hoy + ')';
+    var hhTable = '<table style="width:100%;font-size:10px;border-collapse:collapse">';
+    hhTable += '<thead><tr><th style="position:sticky;left:0;background:var(--bg1);z-index:1;min-width:65px" rowspan="2">Equipo</th>';
+    hhTable += '<th colspan="24" style="text-align:center;background:#e0f2fe;border-bottom:2px solid #0ea5e9">Turno A (08:00 - 20:00)</th>';
+    hhTable += '<th colspan="24" style="text-align:center;background:#fef3c7;border-bottom:2px solid #d97706">Turno B (20:00 - 08:00)</th>';
+    hhTable += '<th rowspan="2" style="text-align:center;min-width:50px">Disp%</th></tr><tr>';
+    for (var hi = 0; hi < horas.length; hi++) {
+      var lbl = horas[hi].replace(':00','h').replace(':30','½');
+      hhTable += '<th style="text-align:center;padding:1px 2px;font-size:9px">' + lbl + '</th>';
+    }
+    hhTable += '</tr></thead><tbody>';
+    eqs.forEach(function(eq) {
+      var fsCount = 0;
+      hhTable += '<tr><td style="position:sticky;left:0;background:var(--bg1);z-index:1;font-weight:700;font-size:11px">' + (eq.equipo || '?') + '</td>';
+      for (var si = 0; si < 48; si++) {
+        var est = eq.estados[si] || 'Op';
+        var isFS = est === 'F/S';
+        if (isFS) fsCount++;
+        var bg = isFS ? '#dc2626' : '#16a34a';
+        hhTable += '<td style="padding:1px"><div style="width:14px;height:16px;border-radius:2px;background:' + bg + ';margin:0 auto" title="' + (eq.equipo||'') + ' ' + (horas[si]||'') + ': ' + est + '"></div></td>';
+      }
+      var dispEq = ((48 - fsCount) / 48 * 100);
+      var dc = dispEq >= 80 ? '#16a34a' : dispEq >= 60 ? '#d97706' : '#dc2626';
+      hhTable += '<td style="text-align:center;font-weight:800;color:' + dc + ';font-size:11px">' + dispEq.toFixed(0) + '%</td></tr>';
+    });
+    hhTable += '</tbody></table>';
+    hhEl.innerHTML = hhTable;
+  } else {
+    fechaEl.textContent = '';
+    hhEl.innerHTML = '<div style="color:var(--text2);text-align:center;padding:12px">Sin datos hora a hora</div>';
+  }
+
+  // Poblar filtro equipo del mapa (desde estado_equipos)
+  var eqSel = document.getElementById('pbiMapaEquipo');
+  var prevEq = eqSel.value;
+  eqSel.innerHTML = '<option value="">Todos</option>';
+  if (PBI_DATA && PBI_DATA.registros) {
+    var eqSet = {};
+    PBI_DATA.registros.forEach(function(r) {
+      var eq = r.equipo || '';
+      var t = pbiTipo(eq);
+      if (t !== 'OTRO') eqSet[eq] = 1;
+    });
+    Object.keys(eqSet).sort().forEach(function(eq) {
+      eqSel.innerHTML += '<option value="' + eq + '"' + (eq === prevEq ? ' selected' : '') + '>' + eq + '</option>';
+    });
+  }
+  renderMapaTurno();
+}
+
+function renderMapaTurno() {
+  var mapaEl = document.getElementById('pbiMapaTurno');
+  if (!PBI_DATA || !PBI_DATA.registros || !PBI_DATA.registros.length) {
+    mapaEl.innerHTML = '<div style="color:var(--text2);text-align:center;padding:12px">Sin datos de estado</div>';
+    return;
+  }
+
+  var semVal = parseInt(document.getElementById('pbiMapaSemana').value) || 39;
+  var eqFilter = document.getElementById('pbiMapaEquipo').value;
+
+  // Calcular lunes de la semana ISO
+  var jan4 = new Date(2026, 0, 4);
+  var mon = new Date(jan4.getTime() + ((semVal - 1) * 7 - ((jan4.getDay() + 6) % 7)) * 86400000);
+  var dias = [];
+  for (var di = 0; di < 7; di++) {
+    var d = new Date(mon.getTime() + di * 86400000);
+    dias.push(d.toISOString().slice(0, 10));
+  }
+
+  // Build timeline per equipo from ALL estado_equipos records
+  // Each record = "equipo entered this estado at this fecha (datetime)"
+  // State persists until next record for same equipo
+  var timeline = {}; // timeline[equipo] = [{ts: Date, estado: string}, ...] sorted asc
+  PBI_DATA.registros.forEach(function(r) {
+    var eq = r.equipo || '';
+    if (!eq) return;
+    if (pbiTipo(eq) === 'OTRO') return;
+    if (eqFilter && eq !== eqFilter) return;
+    if (!r.fecha) return;
+    var ts = new Date(r.fecha.replace(' ', 'T') + ':00Z');
+    if (isNaN(ts.getTime())) return;
+    if (!timeline[eq]) timeline[eq] = [];
+    timeline[eq].push({ ts: ts, estado: r.estado || 'Operativo' });
+  });
+
+  // Sort each equipo timeline ascending by timestamp
+  var eqNames = Object.keys(timeline).sort();
+  eqNames.forEach(function(eq) {
+    timeline[eq].sort(function(a, b) { return a.ts.getTime() - b.ts.getTime(); });
+  });
+
+  // If filter set but equipo has no records, still show it
+  if (eqFilter && eqNames.indexOf(eqFilter) === -1) eqNames = [eqFilter];
+
+  if (!eqNames.length) {
+    mapaEl.innerHTML = '<div style="color:var(--text2);text-align:center;padding:12px">Sin datos para S' + semVal + '</div>';
+    return;
+  }
+
+  // For a given equipo+timestamp, find the state at that moment
+  function estadoAt(records, moment) {
+    if (!records || !records.length) return 'Operativo';
+    var last = null;
+    for (var i = 0; i < records.length; i++) {
+      if (records[i].ts.getTime() <= moment) last = records[i];
+      else break;
+    }
+    return last ? last.estado : 'Operativo';
+  }
+
+  // Calculate F/S hours in a turno (12h block) by walking the timeline
+  function hrsFS(records, turnoStart, turnoEnd) {
+    var startMs = turnoStart.getTime();
+    var endMs = turnoEnd.getTime();
+    var totalFS = 0;
+    // Collect relevant transitions within [startMs, endMs]
+    var transitions = [{ ts: startMs, estado: estadoAt(records, startMs) }];
+    for (var i = 0; i < records.length; i++) {
+      var t = records[i].ts.getTime();
+      if (t > startMs && t < endMs) {
+        transitions.push({ ts: t, estado: records[i].estado });
+      }
+    }
+    // Walk segments
+    for (var j = 0; j < transitions.length; j++) {
+      var segStart = transitions[j].ts;
+      var segEnd = (j + 1 < transitions.length) ? transitions[j + 1].ts : endMs;
+      if (transitions[j].estado === 'Fuera de servicio') {
+        totalFS += (segEnd - segStart) / 3600000;
+      }
+    }
+    return totalFS;
+  }
+
+  var mt = '<table style="width:100%;font-size:11px;border-collapse:collapse">';
+  mt += '<thead><tr><th style="position:sticky;left:0;background:var(--bg1);z-index:1;min-width:65px" rowspan="2">Equipo</th>';
+  dias.forEach(function(f) {
+    var dayName = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][new Date(f + 'T12:00:00').getDay()];
+    mt += '<th colspan="2" style="text-align:center;border-bottom:1px solid var(--border)">' + dayName + ' ' + f.slice(5) + '</th>';
+  });
+  mt += '</tr><tr>';
+  dias.forEach(function() {
+    mt += '<th style="text-align:center;font-size:9px;background:#e0f2fe;padding:2px 6px">A</th>';
+    mt += '<th style="text-align:center;font-size:9px;background:#fef3c7;padding:2px 6px">B</th>';
+  });
+  mt += '</tr></thead><tbody>';
+
+  eqNames.forEach(function(eq) {
+    var recs = timeline[eq] || [];
+    mt += '<tr><td style="position:sticky;left:0;background:var(--bg1);z-index:1;font-weight:700">' + eq + '</td>';
+    dias.forEach(function(f) {
+      var tAStart = new Date(f + 'T08:00:00Z');
+      var tAEnd = new Date(f + 'T20:00:00Z');
+      var tBStart = new Date(f + 'T20:00:00Z');
+      var nextDay = new Date(new Date(f + 'T00:00:00Z').getTime() + 86400000);
+      var tBEnd = new Date(nextDay.toISOString().slice(0, 10) + 'T08:00:00Z');
+
+      var hA = hrsFS(recs, tAStart, tAEnd);
+      var hB = hrsFS(recs, tBStart, tBEnd);
+
+      function cellHtml(hrs, maxHrs) {
+        if (hrs <= 0) return '<td style="text-align:center;padding:4px;background:#f0fdf4;font-weight:700;color:#16a34a;font-size:10px">OP</td>';
+        if (hrs >= maxHrs * 0.99) return '<td style="text-align:center;padding:4px;background:#fef2f2;font-weight:700;color:#dc2626;font-size:10px">F/S</td>';
+        var pct = Math.round((maxHrs - hrs) / maxHrs * 100);
+        return '<td style="text-align:center;padding:4px;background:#fffbeb;font-weight:700;color:#d97706;font-size:10px" title="' + hrs.toFixed(1) + 'h F/S">' + pct + '%</td>';
+      }
+      mt += cellHtml(hA, 12);
+      mt += cellHtml(hB, 12);
+    });
+    mt += '</tr>';
+  });
+  mt += '</tbody></table>';
+  mapaEl.innerHTML = mt;
+}
+
+// ── USUARIOS (admin) ──
+function toggleFormNuevoUsuario() {
+  var f = document.getElementById('formNuevoUsuario');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+
+async function renderUsuarios() {
+  var lista = await apiCall('GET', '/api/usuarios');
+  if (!Array.isArray(lista)) return;
+  document.getElementById('tblUsuarios').innerHTML = lista.map(function(u) {
+    return '<tr>' +
+      '<td><strong>' + u.username + '</strong></td>' +
+      '<td>' + u.nombre + '</td>' +
+      '<td style="color:var(--text2);font-size:12px">' + (u.cargo||'—') + '</td>' +
+      '<td><span class="badge-' + (u.rol==='admin'?'red':'green') + '">' + u.rol + '</span></td>' +
+      '<td><span class="badge-' + (u.activo?'green':'yellow') + '">' + (u.activo?'Activo':'Inactivo') + '</span></td>' +
+      '<td style="font-size:11px;color:var(--text2)">' + (u.creado_en||'').slice(0,10) + '</td>' +
+      '<td style="display:flex;gap:6px">' +
+        '<button class="btn-icon" onclick="toggleActivo(' + u.id + ',' + u.activo + ')">' + (u.activo?'Desactivar':'Activar') + '</button>' +
+        '<button class="btn-icon" style="color:#dc2626" onclick="eliminarUsuario(' + u.id + ',\'' + u.username + '\')">Eliminar</button>' +
+      '</td></tr>';
+  }).join('');
+}
+
+async function crearUsuario() {
+  var body = { username: document.getElementById('nuUsername').value.trim(), nombre: document.getElementById('nuNombre').value.trim(), cargo: document.getElementById('nuCargo').value.trim(), password: document.getElementById('nuPassword').value, rol: document.getElementById('nuRol').value };
+  var msg = document.getElementById('nuMsg');
+  var res = await apiCall('POST', '/api/usuarios', body);
+  msg.style.display = 'block';
+  if (res.ok) { msg.style.color = '#16a34a'; msg.textContent = 'Usuario creado correctamente.'; ['nuUsername','nuNombre','nuCargo','nuPassword'].forEach(function(id){ document.getElementById(id).value=''; }); renderUsuarios(); }
+  else { msg.style.color = '#dc2626'; msg.textContent = res.error || 'Error'; }
+}
+
+async function toggleActivo(id, activo) {
+  await apiCall('PATCH', '/api/usuarios/' + id, { activo: activo ? 0 : 1 });
+  renderUsuarios();
+}
+
+async function eliminarUsuario(id, username) {
+  if (!confirm('¿Eliminar usuario "' + username + '"?')) return;
+  await apiCall('DELETE', '/api/usuarios/' + id);
+  renderUsuarios();
+}
+
+// ── HELPERS ──
+function tipoEquipo(eq) {
+  if (!eq) return 'OTRO';
+  var s = String(eq).toUpperCase();
+  if (s.startsWith('JRS')) return 'JRS';
+  if (s.startsWith('JR')) return 'JR';
+  if (s.startsWith('PICARROCA')) return 'PICARROCA';
+  if (s.startsWith('RB3')) return 'RB3';
+  if (s.startsWith('MARTILLO')) return 'PICARROCA';
+  var m = s.match(/^([A-Z]+)/);
+  return m ? m[1] : 'OTRO';
+}
+
+function getFiltros() {
+  var tipos = [];
+  if (document.getElementById('fJR').checked) tipos.push('JR');
+  if (document.getElementById('fJRS').checked) tipos.push('JRS');
+  if (document.getElementById('fPICAROCA').checked) tipos.push('PICARROCA');
+  if (document.getElementById('fRB3').checked) tipos.push('RB3');
+  // Equipo específico del select
+  var selEq = document.getElementById('eqSelect');
+  var equiposEsp = selEq && selEq.value ? [selEq.value] : [];
+  return {
+    year: parseInt(document.getElementById('gYear').value) || 0,
+    week: parseInt(document.getElementById('gWeek').value) || 0,
+    tipos: tipos,
+    turno: document.getElementById('gTurno').value,
+    equiposEsp: equiposEsp,
+    fechaDesde: document.getElementById('gFechaDesde').value || '',
+    fechaHasta: document.getElementById('gFechaHasta').value || '',
+    tipoMant: (document.getElementById('fNP').checked && document.getElementById('fPL').checked) ? [] :
+              document.getElementById('fNP').checked ? ['NP'] :
+              document.getElementById('fPL').checked ? ['PL'] : []
+  };
+}
+
+function filtrar(overrideWeek) {
+  if (!DB_DATA.loaded) return [];
+  var f = getFiltros();
+  var week = (overrideWeek !== undefined) ? overrideWeek : f.week;
+  return DB_DATA.detenciones.filter(function(d) {
+    if (f.fechaDesde || f.fechaHasta) {
+      var fi = d.fecha_inicio ? d.fecha_inicio.slice(0, 10) : '';
+      if (!fi) return false;
+      if (f.fechaDesde && fi < f.fechaDesde) return false;
+      if (f.fechaHasta && fi > f.fechaHasta) return false;
+    } else if (f.year) {
+      var y = d.fecha_inicio ? new Date(d.fecha_inicio).getFullYear() : (d.semana ? f.year : 0);
+      if (y !== f.year) return false;
+    }
+    if (week && parseInt(d.semana) !== week) return false;
+    // Si hay equipos específicos seleccionados, tienen prioridad sobre el tipo
+    if (f.equiposEsp.length) {
+      if (f.equiposEsp.indexOf(d.equipo) === -1) return false;
+    } else if (f.tipos.length && f.tipos.indexOf(tipoEquipo(d.equipo)) === -1) {
+      return false;
+    }
+    if (f.turno && d.turno !== f.turno) return false;
+    if (f.tipoMant && f.tipoMant.length && f.tipoMant.indexOf(d.mantenimiento) === -1) return false;
+    return true;
+  });
+}
+
+function sincronizarEqCheck() {
+  // Mostrar/ocultar sección eq específico según tipos activos que tienen JR/JRS
+  var jrOn = document.getElementById('fJR').checked;
+  var jrsOn = document.getElementById('fJRS').checked;
+  var picarOn = document.getElementById('fPICAROCA').checked;
+  var rbOn = document.getElementById('fRB3').checked;
+  var wrap = document.getElementById('eqEspecificoWrap');
+  if (!DB_DATA.loaded) return;
+  if (jrOn || jrsOn || picarOn || rbOn) {
+    wrap.style.display = 'block';
+    poblarEqEspecifico();
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+function poblarEqEspecifico() {
+  var jrOn = document.getElementById('fJR').checked;
+  var jrsOn = document.getElementById('fJRS').checked;
+  var picarOn = document.getElementById('fPICAROCA').checked;
+  var rbOn = document.getElementById('fRB3').checked;
+  var equiposFiltrados = DB_DATA.equipos.filter(function(eq) {
+    var t = tipoEquipo(eq);
+    return (jrOn && t === 'JR') || (jrsOn && t === 'JRS') || (picarOn && t === 'PICARROCA') || (rbOn && t === 'RB3');
+  });
+  var sel = document.getElementById('eqSelect');
+  var prevVal = sel.value;
+  sel.innerHTML = '<option value="">— Todos —</option>';
+  // Agrupar por tipo con optgroup
+  var grupos = {};
+  equiposFiltrados.forEach(function(eq) {
+    var t = tipoEquipo(eq);
+    if (!grupos[t]) grupos[t] = [];
+    grupos[t].push(eq);
+  });
+  Object.keys(grupos).sort().forEach(function(tipo) {
+    var grp = document.createElement('optgroup');
+    grp.label = tipo;
+    grupos[tipo].forEach(function(eq) {
+      var opt = document.createElement('option');
+      opt.value = eq;
+      opt.textContent = eq;
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  });
+  // Restaurar selección previa si sigue disponible
+  if (prevVal && equiposFiltrados.indexOf(prevVal) !== -1) sel.value = prevVal;
+}
+
+function limpiarEqEspecifico() {
+  document.getElementById('eqSelect').value = '';
+  aplicarFiltros();
+}
+
+function filtrarNP(datos) { return datos.filter(function(d){ return d.mantenimiento === 'NP'; }); }
+function filtrarPL(datos) { return datos.filter(function(d){ return d.mantenimiento === 'PL'; }); }
+
+function sumHoras(arr) { return arr.reduce(function(s,d){ return s + (parseFloat(d.detencion_total_horas)||0); }, 0); }
+
+// Convierte "HH:MM" a minutos desde medianoche
+function hmToMin(s) {
+  if (!s || typeof s !== 'string') return -1;
+  var p = s.split(':');
+  return parseInt(p[0]) * 60 + parseInt(p[1] || 0);
+}
+
+// Merge de rangos solapados: si dos registros comparten horario, toma el mayor de sus horas (no suma)
+function mergeRangos(registros) {
+  var items = [];
+  registros.forEach(function(d) {
+    var ini = hmToMin(d.hora_inicio), fin = hmToMin(d.hora_termino);
+    var h = parseFloat(d.detencion_total_horas) || 0;
+    if (ini >= 0 && fin >= 0 && ini !== fin) {
+      if (fin < ini) fin += 1440;
+      items.push({ ini: ini, fin: fin, h: h, tipo: (d.mantenimiento||'').toUpperCase() });
+    } else {
+      items.push({ ini: -1, fin: -1, h: h, tipo: (d.mantenimiento||'').toUpperCase() });
+    }
+  });
+  var conRango = items.filter(function(r){ return r.ini >= 0; });
+  var sinRango = items.filter(function(r){ return r.ini < 0; });
+  conRango.sort(function(a,b){ return a.ini - b.ini; });
+  // Agrupar solapados: si dos rangos se tocan, toma el max(horas) no la suma
+  var grupos = [];
+  conRango.forEach(function(r) {
+    if (!grupos.length || r.ini >= grupos[grupos.length-1].fin) {
+      grupos.push({ ini: r.ini, fin: r.fin, regs: [r] });
+    } else {
+      var last = grupos[grupos.length-1];
+      last.fin = Math.max(last.fin, r.fin);
+      last.regs.push(r);
+    }
+  });
+  var np = 0, pl = 0;
+  grupos.forEach(function(g) {
+    // Para el grupo solapado: max de horas individuales, no suma
+    var maxH = Math.max.apply(null, g.regs.map(function(r){ return r.h; }));
+    var hasNP = g.regs.some(function(r){ return r.tipo === 'NP'; });
+    if (hasNP) np += maxH; else pl += maxH;
+  });
+  sinRango.forEach(function(r) {
+    if (r.tipo === 'NP') np += r.h; else pl += r.h;
+  });
+  return { np: np, pl: pl };
+}
+
+// Suma horas con merge de solapamiento + cap de 12h por equipo+fecha+turno
+function sumHorasCap(arr) {
+  var byTurno = {};
+  arr.forEach(function(d) {
+    var k = (d.equipo||'') + '|' + (d.fecha_inicio||'').substring(0,10) + '|' + (d.turno||'');
+    if (!byTurno[k]) byTurno[k] = [];
+    byTurno[k].push(d);
+  });
+  var totalNP = 0, totalPL = 0;
+  Object.keys(byTurno).forEach(function(k) {
+    var t = mergeRangos(byTurno[k]);
+    var sum = t.np + t.pl;
+    if (sum > 12) { var f = 12 / sum; t.np *= f; t.pl *= f; }
+    totalNP += t.np; totalPL += t.pl;
+  });
+  return { np: totalNP, pl: totalPL, total: totalNP + totalPL };
+}
+
+// Horas calendario por equipo: rango DESDE-HASTA => días × 24; si no, semanas únicas × 168
+function horasCalendarioPeriodo(rows) {
+  var f = getFiltros();
+  if (f.fechaDesde && f.fechaHasta) {
+    var dias = Math.round((new Date(f.fechaHasta) - new Date(f.fechaDesde)) / 86400000) + 1;
+    if (dias > 0) return dias * 24;
+  }
+  var semSet = new Set();
+  rows.forEach(function(d){ if (d.semana) semSet.add(d.semana); });
+  return (semSet.size || 1) * 168;
+}
+
+// Calcula disponibilidad contractual: (Cal - NP - PL) / (Cal - PL)
+// Cal = equipos de la flota × horas calendario del período (ver horasCalendarioPeriodo)
+function calcDispContractual(datos, soloTipo) {
+  var rows = soloTipo ? datos.filter(function(d){ return tipoEquipo(d.equipo) === soloTipo; }) : datos;
+  if (!rows.length) return { disp: 0, horasNP: 0, horasPL: 0, cal: 0 };
+  // Total equipos de la flota (no solo los que tuvieron detenciones)
+  var nFlota = soloTipo && FLOTA_EQUIPOS[soloTipo] ? FLOTA_EQUIPOS[soloTipo].length : 0;
+  if (!nFlota) {
+    var eqSet = new Set();
+    rows.forEach(function(d){ if (d.equipo) eqSet.add(d.equipo); });
+    nFlota = eqSet.size;
+  }
+  var cal = nFlota * horasCalendarioPeriodo(rows);
+  var cap = sumHorasCap(rows);
+  var np = cap.np;
+  var pl = cap.pl;
+  var denom = cal - pl;
+  var disp = denom > 0 ? Math.max(0, (cal - np - pl) / denom * 100) : 0;
+  return { disp: disp, horasNP: np, horasPL: pl, cal: cal };
+}
+
+function mkChart(id, config) {
+  var ctx = document.getElementById(id);
+  if (!ctx) return;
+  if (CHARTS[id]) { CHARTS[id].destroy(); delete CHARTS[id]; }
+  // Inyectar toolbar si no existe
+  if (!ctx.previousElementSibling || !ctx.previousElementSibling.classList.contains('chart-toolbar')) {
+    var tb = document.createElement('div');
+    tb.className = 'chart-toolbar';
+    tb.innerHTML =
+      '<button class="btn-icon" onclick="copyChart(\''+id+'\')" title="Copiar imagen">Copiar</button>' +
+      '<button class="btn-icon" onclick="dlChart(\''+id+'\')" title="Descargar PNG">PNG</button>' +
+      '<button class="btn-icon" onclick="zoomChart(\''+id+'\')" title="Ver en grande">Zoom</button>';
+    ctx.parentNode.insertBefore(tb, ctx);
+  }
+  CHARTS[id] = new Chart(ctx, config);
+}
+
+function chartToDataURL(id) {
+  var src = document.getElementById(id);
+  if (!src) return null;
+  var off = document.createElement('canvas');
+  off.width = src.width;
+  off.height = src.height;
+  var ctx = off.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, off.width, off.height);
+  ctx.drawImage(src, 0, 0);
+  return off.toDataURL('image/png');
+}
+
+function copyChart(id) {
+  var src = document.getElementById(id);
+  if (!src) return;
+  var off = document.createElement('canvas');
+  off.width = src.width; off.height = src.height;
+  var ctx = off.getContext('2d');
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,off.width,off.height);
+  ctx.drawImage(src,0,0);
+  off.toBlob(function(blob){
+    navigator.clipboard.write([new ClipboardItem({'image/png':blob})]).then(function(){
+      showToast('Imagen copiada al portapapeles');
+    }).catch(function(){ showToast('No se pudo copiar — usa PNG'); });
+  });
+}
+
+function dlChart(id) {
+  var url = chartToDataURL(id);
+  if (!url) return;
+  var a = document.createElement('a');
+  a.download = id + '.png';
+  a.href = url;
+  a.click();
+}
+
+function zoomChart(id) {
+  var url = chartToDataURL(id);
+  if (!url) return;
+  document.getElementById('chartZoomImg').src = url;
+  document.getElementById('chartZoomModal').classList.add('open');
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:9px 20px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity .25s';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg; // no emojis
+  t.style.opacity = '1';
+  clearTimeout(t._t);
+  t._t = setTimeout(function(){ t.style.opacity = '0'; }, 2200);
+}
+
+function toggleCardBody(btn) {
+  var body = btn.closest('.card').querySelector('.card-body-collapse');
+  var hidden = body.style.display === 'none';
+  body.style.display = hidden ? '' : 'none';
+  btn.textContent = hidden ? '▼' : '▶';
+  btn.title = hidden ? 'Minimizar' : 'Expandir';
+}
+
+function noDataHtml(msg) {
+  return '<div style="text-align:center;padding:40px;color:var(--text2);font-size:13px">' + (msg||'Sin datos. Carga la BD primero.') + '</div>';
+}
+
+function dispColor(pct) {
+  if (pct >= 90) return '#16a34a';
+  if (pct >= 60) return '#d97706';
+  return '#dc2626';
+}
+
+function dispBadge(pct) {
+  if (pct >= 90) return '<span class="badge-green">' + pct.toFixed(1) + '%</span>';
+  if (pct >= 60) return '<span class="badge-yellow">' + pct.toFixed(1) + '%</span>';
+  return '<span class="badge-red">' + pct.toFixed(1) + '%</span>';
+}
+
+function deltaHtml(curr, prev, higherIsBetter) {
+  if (prev === null || prev === undefined || isNaN(prev)) return '';
+  var diff = curr - prev;
+  if (Math.abs(diff) < 0.01) return '<div class="kpi-delta" style="color:#6b7280">= Sin cambio</div>';
+  var good = higherIsBetter ? diff > 0 : diff < 0;
+  var arrow = diff > 0 ? '▲' : '▼';
+  var cls = good ? 'delta-up' : 'delta-down';
+  return '<div class="kpi-delta ' + cls + '">' + arrow + ' ' + Math.abs(diff).toFixed(1) + ' vs sem. anterior</div>';
+}
+
+function calcDispEquipo(datosTodos, equipo) {
+  var datosEq = datosTodos.filter(function(d){ return d.equipo === equipo; });
+  var nSem = new Set(datosEq.map(function(d){ return d.semana; }).filter(Boolean)).size || 1;
+  var cal = nSem * 168;
+  var np = sumHoras(filtrarNP(datosEq));
+  var pl = sumHoras(filtrarPL(datosEq));
+  var denom = cal - pl;
+  return denom > 0 ? Math.max(0, (cal - np - pl) / denom * 100) : 0;
+}
+
+// ── APLICAR FILTROS ──
+function aplicarFiltros() { cargarDatos(); }
+function limpiarFiltros() {
+  document.getElementById('gYear').value = 2026;
+  document.getElementById('gWeek').value = 0;
+  document.getElementById('gTurno').value = '';
+  document.getElementById('gFechaDesde').value = '';
+  document.getElementById('gFechaHasta').value = '';
+  ['fJR','fJRS','fNP','fPL'].forEach(function(id){ document.getElementById(id).checked = true; });
+  ['fPICAROCA','fRB3'].forEach(function(id){ document.getElementById(id).checked = false; });
+  aplicarFiltros();
+}
+
+// ── FULLSCREEN EJECUTIVO ──
+function toggleFullscreen() {
+  var tab = document.getElementById('tab-ejecutivo');
+  var btn = document.getElementById('btnFullscreen');
+  if (tab.classList.contains('fullscreen-mode')) {
+    tab.classList.remove('fullscreen-mode');
+    btn.textContent = '⛶'; btn.title = 'Pantalla completa';
+    if (document.fullscreenElement) document.exitFullscreen().catch(function(){});
+  } else {
+    tab.classList.add('fullscreen-mode');
+    btn.textContent = '✕'; btn.title = 'Salir de pantalla completa';
+    tab.requestFullscreen().catch(function(){});
+  }
+  setTimeout(function() { Object.keys(_ejCharts).forEach(function(k) { if (_ejCharts[k]) _ejCharts[k].resize(); }); }, 200);
+}
+document.addEventListener('fullscreenchange', function() {
+  var tab = document.getElementById('tab-ejecutivo');
+  if (!document.fullscreenElement && tab.classList.contains('fullscreen-mode')) {
+    tab.classList.remove('fullscreen-mode');
+    document.getElementById('btnFullscreen').textContent = '⛶';
+    setTimeout(function() { Object.keys(_ejCharts).forEach(function(k) { if (_ejCharts[k]) _ejCharts[k].resize(); }); }, 200);
+  }
+});
+
+// ── RENDER EJECUTIVO ──
+var _ejCharts = {};
+function renderEjecutivo() {
+  applyDashConfig('ejecutivo');
+  var todos = filtrar();
+  if (!todos.length) return;
+  var flota = document.getElementById('ejFlota').value;
+  var equiposFlota = flota === 'ALL' ? [].concat(FLOTA_EQUIPOS.JR, FLOTA_EQUIPOS.JRS, FLOTA_EQUIPOS.PICARROCA, FLOTA_EQUIPOS.RB3) : FLOTA_EQUIPOS[flota] || [];
+  var datos = todos.filter(function(d) { return equiposFlota.indexOf(d.equipo) >= 0; });
+  var np = datos.filter(function(d) { return (d.mantenimiento||'').toUpperCase() === 'NP'; });
+  var pl = datos.filter(function(d) { return (d.mantenimiento||'').toUpperCase() === 'PL'; });
+  var totalEq = equiposFlota.length;
+  var f = getFiltros();
+  var semanas = []; var semSet = {};
+  datos.forEach(function(d) { if (d.semana && !semSet[d.semana]) { semSet[d.semana] = true; semanas.push(d.semana); }});
+  var nSemanas = semanas.length || 1;
+  var cap = sumHorasCap(datos);
+  var hrsNP = cap.np;
+  var hrsPL = cap.pl;
+  var cal = totalEq * nSemanas * 168;
+  var disp = cal > 0 ? ((cal - hrsNP - hrsPL) / cal * 100) : 0;
+  var hrsDisp = cal - hrsNP - hrsPL;
+  ejRenderDonut(disp);
+  ejRenderFlotaKpis(totalEq, nSemanas, disp, hrsNP);
+  ejRenderPie(hrsNP, hrsPL, hrsDisp);
+  ejRenderDispDia(datos, totalEq);
+  ejRenderTipoDet(np);
+  ejRenderSistEquipo(datos, equiposFlota);
+  ejRenderComponentes(np);
+  document.getElementById('ejSubtitle').textContent = (flota === 'ALL' ? 'Toda la Flota' : 'Flota ' + flota) + ' · S' + semanas.sort().join(',S') + ' · ' + np.length + ' fallas NP';
+}
+
+function ejRenderDonut(disp) {
+  if (_ejCharts.donut) _ejCharts.donut.destroy();
+  _ejCharts.donut = new Chart(document.getElementById('chartEjDonut'), {
+    type: 'doughnut',
+    data: { labels: ['Disponible','Indisponible'], datasets: [{ data: [disp, 100-disp], backgroundColor: ['#00838f','#e0e0e0'], borderWidth: 0 }] },
+    options: { cutout: '70%', plugins: { legend: { display: false }, tooltip: { enabled: true } } },
+    plugins: [{ id: 'centerText', afterDraw: function(chart) {
+      var ctx = chart.ctx, w = chart.width, h = chart.height;
+      ctx.save(); ctx.font = 'bold 28px sans-serif'; ctx.fillStyle = '#00838f'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(disp.toFixed(1) + '%', w/2, h/2); ctx.restore();
+    }}]
+  });
+}
+
+function ejRenderFlotaKpis(totalEq, nSemanas, disp, hrsNP) {
+  var eqProm = totalEq * disp / 100;
+  document.getElementById('ejFlotaKpis').innerHTML =
+    '<div class="kpi-card"><div class="kpi-label">Total Equipos</div><div class="kpi-value">' + totalEq + '</div></div>' +
+    '<div class="kpi-card"><div class="kpi-label">Semanas</div><div class="kpi-value">' + nSemanas + '</div></div>' +
+    '<div class="kpi-card"><div class="kpi-label">Eq. Prom. Disponibles</div><div class="kpi-value">' + eqProm.toFixed(1) + '</div></div>' +
+    '<div class="kpi-card"><div class="kpi-label">Horas NP Total</div><div class="kpi-value" style="color:#dc2626">' + hrsNP.toFixed(0) + '</div></div>';
+}
+
+function ejRenderPie(hrsNP, hrsPL, hrsDisp) {
+  if (_ejCharts.pie) _ejCharts.pie.destroy();
+  _ejCharts.pie = new Chart(document.getElementById('chartEjPie'), {
+    type: 'doughnut',
+    data: { labels: ['Tiempo NP','Tiempo PL','Tiempo Disponible'], datasets: [{ data: [hrsNP, hrsPL, hrsDisp], backgroundColor: ['#dc2626','#f59e0b','#16a34a'], borderWidth: 1 }] },
+    options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, usePointStyle: true } },
+      tooltip: { callbacks: { label: function(ctx) { var t = ctx.dataset.data.reduce(function(a,b){return a+b},0); return ctx.label + ': ' + ctx.raw.toFixed(0) + 'h (' + (ctx.raw/t*100).toFixed(1) + '%)'; }}}
+    }}
+  });
+}
+
+function ejRenderDispDia(datos, totalEq) {
+  var byDay = {};
+  datos.forEach(function(d) {
+    if (!d.fecha_inicio) return;
+    var dia = d.fecha_inicio.substring(0,10);
+    if (!byDay[dia]) byDay[dia] = { eqSet: {}, regs: [] };
+    byDay[dia].eqSet[d.equipo] = true;
+    byDay[dia].regs.push(d);
+  });
+  Object.keys(byDay).forEach(function(dia) {
+    var cap = sumHorasCap(byDay[dia].regs);
+    byDay[dia].np = cap.np; byDay[dia].pl = cap.pl;
+  });
+  var dias = Object.keys(byDay).sort().slice(-14);
+  var labels = dias.map(function(d) { var p = d.split('-'); return parseInt(p[2]) + '/' + parseInt(p[1]); });
+  var dispArr = dias.map(function(d) { var i = byDay[d]; return Math.max(0, (totalEq*24 - i.np - i.pl) / (totalEq*24) * 100); });
+  var eqProm = dias.map(function(d) { return Object.keys(byDay[d].eqSet).length; });
+  if (_ejCharts.dispDia) _ejCharts.dispDia.destroy();
+  _ejCharts.dispDia = new Chart(document.getElementById('chartEjDispDia'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: '% Disponibilidad', data: dispArr, backgroundColor: '#00838f', borderRadius: 3, order: 2, yAxisID: 'y' },
+        { label: 'Equipos Promedio', data: eqProm, type: 'line', borderColor: '#e67e22', backgroundColor: '#e67e22', pointRadius: 4, pointStyle: 'rectRot', tension: 0.3, order: 1, yAxisID: 'y1' }
+      ]
+    },
+    options: {
+      responsive: true, plugins: { legend: { position: 'top', labels: { font: { size: 10 }, usePointStyle: true } },
+        tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + (ctx.dataset.yAxisID === 'y' ? ctx.raw.toFixed(1) + '%' : ctx.raw); }}}
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100, title: { display: true, text: '% Disponibilidad', font: { size: 10 } }, ticks: { callback: function(v) { return v + '%'; }, font: { size: 10 } } },
+        y1: { position: 'right', beginAtZero: true, max: totalEq + 2, title: { display: true, text: 'Equipos', font: { size: 10 } }, grid: { drawOnChartArea: false }, ticks: { font: { size: 10 } } },
+        x: { ticks: { font: { size: 10 } } }
+      }
+    },
+    plugins: [{ id: 'barLabels', afterDatasetsDraw: function(chart) {
+      var meta = chart.getDatasetMeta(0);
+      var ctx = chart.ctx;
+      ctx.save(); ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+      meta.data.forEach(function(bar, i) { ctx.fillText(dispArr[i].toFixed(1) + '%', bar.x, bar.y + 14); });
+      ctx.restore();
+    }}]
+  });
+}
+
+function ejRenderTipoDet(np) {
+  var byTipo = {};
+  np.forEach(function(d) { var t = d.tipo_de_perdida || 'SIN TIPO'; byTipo[t] = (byTipo[t]||0) + (parseFloat(d.detencion_total_horas)||0); });
+  var sorted = Object.keys(byTipo).sort(function(a,b){ return byTipo[b]-byTipo[a]; });
+  var labels = sorted.map(function(t) { return t.length > 20 ? t.substring(0,18) + '...' : t; });
+  var vals = sorted.map(function(t) { return byTipo[t]; });
+  if (_ejCharts.tipoDet) _ejCharts.tipoDet.destroy();
+  _ejCharts.tipoDet = new Chart(document.getElementById('chartEjTipoDet'), {
+    type: 'bar',
+    data: { labels: labels, datasets: [{ data: vals, backgroundColor: '#00838f', borderRadius: 3 }] },
+    options: {
+      indexAxis: 'y', responsive: true,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { title: function(items) { return sorted[items[0].dataIndex]; } } } },
+      scales: { x: { title: { display: true, text: 'Horas', font: { size: 10 } }, ticks: { font: { size: 10 } } }, y: { ticks: { font: { size: 10 } } } }
+    }
+  });
+}
+
+function ejRenderSistEquipo(datos, equipos) {
+  var sistemas = {};
+  var byEq = {};
+  datos.forEach(function(d) {
+    if ((d.mantenimiento||'').toUpperCase() !== 'NP') return;
+    var eq = d.equipo, s = d.sistemas || 'OTRO';
+    if (!byEq[eq]) byEq[eq] = {};
+    byEq[eq][s] = (byEq[eq][s]||0) + (parseFloat(d.detencion_total_horas)||0);
+    sistemas[s] = true;
+  });
+  var sistList = Object.keys(sistemas).sort();
+  var eqSorted = equipos.slice().sort(function(a,b) {
+    var ta = 0, tb = 0;
+    sistList.forEach(function(s) { ta += (byEq[a]||{})[s]||0; tb += (byEq[b]||{})[s]||0; });
+    return tb - ta;
+  });
+  var colors = ['#00838f','#e67e22','#6366f1','#dc2626','#16a34a','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#a855f7','#64748b'];
+  var datasets = sistList.map(function(s, i) {
+    return { label: s.length > 12 ? s.substring(0,10) + '..' : s, data: eqSorted.map(function(eq) { return (byEq[eq]||{})[s]||0; }), backgroundColor: colors[i % colors.length], borderRadius: 2 };
+  });
+  // Disponibilidad line
+  var dispLine = eqSorted.map(function(eq) {
+    var npH = 0; sistList.forEach(function(s) { npH += (byEq[eq]||{})[s]||0; });
+    var f = getFiltros(); var nSem = 0; var semSet = {};
+    datos.forEach(function(d) { if (d.equipo === eq && d.semana && !semSet[d.semana]) { semSet[d.semana] = true; nSem++; }});
+    nSem = nSem || 1;
+    return Math.max(0, (nSem*168 - npH) / (nSem*168) * 100);
+  });
+  datasets.push({ label: 'Disponibilidad', data: dispLine, type: 'line', borderColor: '#dc2626', backgroundColor: '#dc2626', pointRadius: 4, tension: 0.3, yAxisID: 'y1', order: 0 });
+  if (_ejCharts.sistEq) _ejCharts.sistEq.destroy();
+  _ejCharts.sistEq = new Chart(document.getElementById('chartEjSistEquipo'), {
+    type: 'bar',
+    data: { labels: eqSorted, datasets: datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top', labels: { font: { size: 9 }, usePointStyle: true, boxWidth: 10 } } },
+      scales: {
+        x: { stacked: true, ticks: { font: { size: 10 } } },
+        y: { stacked: true, title: { display: true, text: 'Horas NP', font: { size: 10 } }, ticks: { font: { size: 10 } } },
+        y1: { position: 'right', min: 0, max: 100, title: { display: true, text: 'Disp%', font: { size: 10 } }, grid: { drawOnChartArea: false }, ticks: { callback: function(v){return v+'%';}, font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function ejRenderComponentes(np) {
+  var byComp = {};
+  np.forEach(function(d) { var c = d.componente || 'SIN COMPONENTE'; byComp[c] = (byComp[c]||0) + (parseFloat(d.detencion_total_horas)||0); });
+  var sorted = Object.keys(byComp).sort(function(a,b){ return byComp[b]-byComp[a]; }).slice(0, 15);
+  var labels = sorted.map(function(c) { return c.length > 18 ? c.substring(0,16) + '..' : c; });
+  var vals = sorted.map(function(c) { return byComp[c]; });
+  var colors = ['#00838f','#e67e22','#6366f1','#dc2626','#16a34a','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#a855f7','#64748b','#0ea5e9','#84cc16','#f43f5e','#7c3aed'];
+  if (_ejCharts.comp) _ejCharts.comp.destroy();
+  _ejCharts.comp = new Chart(document.getElementById('chartEjComponentes'), {
+    type: 'bar',
+    data: { labels: labels, datasets: [{ data: vals, backgroundColor: colors }] },
+    options: {
+      responsive: true, plugins: { legend: { display: false } },
+      scales: { y: { title: { display: true, text: 'Horas', font: { size: 10 } }, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 9 }, maxRotation: 45 } } }
+    }
+  });
+}
+
+// ── RENDER DASHBOARD ──
+function renderDashboard() {
+  applyDashConfig('dashboard');
+  var todos = filtrar();
+  var f = getFiltros();
+
+  // Subtítulo
+  var semanas = [...new Set(todos.map(function(d){ return d.semana; }))].filter(Boolean).sort(function(a,b){ return a-b; });
+  var fechas = todos.map(function(d){ return d.fecha_inicio; }).filter(Boolean).sort();
+  var fi = fechas[0] ? new Date(fechas[0]).toLocaleDateString() : '—';
+  var ff = fechas[fechas.length-1] ? new Date(fechas[fechas.length-1]).toLocaleDateString() : '—';
+  var nFallasNP = filtrarNP(todos).length;
+  var semLabel = f.week ? 'Semana ' + f.week : (semanas.length ? 'Semanas ' + semanas[0] + '–' + semanas[semanas.length-1] : 'Todas las semanas');
+  document.getElementById('dashSubtitle').textContent = semLabel + ' / ' + f.year + ' · ' + fi + ' a ' + ff + ' · ' + nFallasNP + ' fallas NP en el período';
+
+  if (!todos.length) {
+    document.getElementById('dashKpis').innerHTML = noDataHtml();
+    return;
+  }
+
+  // Datos semana anterior para deltas
+  var prevWeek = f.week > 1 ? f.week - 1 : null;
+  var todosPrev = prevWeek ? filtrar(prevWeek) : [];
+
+  // KPIs JR usando función compartida (misma lógica que pestaña Disponibilidad)
+  var jrKPI = calcDispContractual(todos, 'JR');
+  var dispContractualJR = jrKPI.disp;
+  var horasNP_JR = jrKPI.horasNP;
+  var horasPL_JR = jrKPI.horasPL;
+  var nJR = FLOTA_EQUIPOS.JR ? FLOTA_EQUIPOS.JR.length : 10;
+  var dispPromJR = jrKPI.cal > 0 ? Math.max(0, (jrKPI.cal - horasNP_JR - horasPL_JR) / jrKPI.cal * 100) : 0;
+  var indispJR = 100 - dispPromJR;
+
+  // Deltas JR
+  var jrKPIPrev = todosPrev.length ? calcDispContractual(todosPrev, 'JR') : null;
+  var dispContractualJRPrev = jrKPIPrev ? jrKPIPrev.disp : null;
+  var dispPromJRPrev = (jrKPIPrev && jrKPIPrev.cal > 0) ? Math.max(0, (jrKPIPrev.cal - jrKPIPrev.horasNP - jrKPIPrev.horasPL) / jrKPIPrev.cal * 100) : null;
+  var horasNP_JR_prev = jrKPIPrev ? jrKPIPrev.horasNP : null;
+
+  // Equipo más crítico
+  var porEqNP = {};
+  filtrarNP(todos).forEach(function(d){ porEqNP[d.equipo] = (porEqNP[d.equipo]||0) + (parseFloat(d.detencion_total_horas)||0); });
+  var equipoCrit = Object.keys(porEqNP).sort(function(a,b){ return porEqNP[b]-porEqNP[a]; })[0] || '—';
+  var horasCrit = porEqNP[equipoCrit] || 0;
+
+  // KPI cards
+  document.getElementById('dashKpis').innerHTML =
+    kpiCard('DISP. CONTRACTUAL JR', dispContractualJR.toFixed(1) + '%', nJR + ' equipos JR · ' + f.year, dispColor(dispContractualJR), deltaHtml(dispContractualJR, dispContractualJRPrev, true)) +
+    kpiCard('HORAS DETENCIÓN NP', horasNP_JR.toFixed(1), 'horas no programadas JR', '#dc2626', deltaHtml(horasNP_JR, horasNP_JR_prev, false)) +
+    kpiCard('DISPONIBILIDAD PROM. JR', dispPromJR.toFixed(1) + '%', 'promedio equipos JR', dispColor(dispPromJR), deltaHtml(dispPromJR, dispPromJRPrev, true)) +
+    kpiCard('INDISPONIBILIDAD JR', indispJR.toFixed(1) + '%', '= 100 - Disp%', '#dc2626', '') +
+    kpiCard('EQUIPO MÁS CRÍTICO', equipoCrit, horasCrit.toFixed(1) + ' h NP', '#E8571A', '');
+
+  // Disponibilidad por Flota
+  renderDispFlota(todos);
+
+  // Tablas 4 columnas
+  renderTablasSistema(todos);
+
+  // Fallas Repetitivas
+  renderRepetitivas(todos);
+
+  // Jack Knife
+  renderJackKnife(todos);
+
+  // Pareto Componentes
+  renderParetoComp(todos);
+
+  // Tabla disponibilidad por equipo
+  renderTablaDispEquipo(todos);
+
+  // Gráficos disponibilidad
+  renderGraficosDisp(todos);
+
+  // Mapa de calor
+  renderHeatmap();
+
+  // Disponibilidad por día
+  renderDispDia(todos);
+
+  // EQAC
+  renderEqac(todos);
+
+  // TRF
+  renderTRF(todos);
+
+  // Bad Actors
+  renderBadActors(todos);
+
+  // Pérdidas por Categoría
+  renderPerdCat(todos);
+
+  // Cascada
+  renderCascada(todos);
+
+  // Pareto Disponibilidad
+  renderParetoDisp(todos);
+}
+
+function kpiCard(label, valor, sub, color, deltaHtmlStr) {
+  return '<div class="kpi-card">' +
+    '<div class="kpi-label">' + label + '</div>' +
+    '<div class="kpi-value" style="color:' + color + '">' + valor + '</div>' +
+    '<div class="kpi-sub">' + sub + '</div>' +
+    (deltaHtmlStr || '') +
+    '</div>';
+}
+
+// Equipos conocidos por tipo (para calcular 100% cuando no hay intervenciones)
+var FLOTA_EQUIPOS = {
+  JR: ['JR001','JR002','JR003','JR004','JR005','JR006','JR007','JR008','JR009','JR010'],
+  JRS: ['JRS001','JRS002'],
+  PICARROCA: ['PICARROCA N1','PICARROCA N2'],
+  RB3: ['RB3-11','RB3-12','RB3-13']
+};
+
+if (!window._flotaIncluir) window._flotaIncluir = { JR: true, JRS: true, PICARROCA: true, RB3: true };
+
+function toggleFlotaTipo(tipo) {
+  window._flotaIncluir[tipo] = !window._flotaIncluir[tipo];
+  renderDispFlota();
+}
+
+function renderDispFlota(todos) {
+  var allData = DB_DATA.detenciones;
+  var f = getFiltros();
+  var filtered = allData.filter(function(d) {
+    if (f.fechaDesde || f.fechaHasta) {
+      var fi = d.fecha_inicio ? d.fecha_inicio.slice(0, 10) : '';
+      if (!fi) return false;
+      if (f.fechaDesde && fi < f.fechaDesde) return false;
+      if (f.fechaHasta && fi > f.fechaHasta) return false;
+    } else if (f.year) {
+      var y = d.fecha_inicio ? new Date(d.fecha_inicio).getFullYear() : 0;
+      if (y !== f.year) return false;
+    }
+    if (f.week && parseInt(d.semana) !== f.week) return false;
+    if (f.turno && d.turno !== f.turno) return false;
+    return true;
+  });
+
+  // Detectar semanas únicas en el período filtrado
+  var semanasUnicas = {};
+  filtered.forEach(function(d) { if (d.semana) semanasUnicas[d.semana] = true; });
+  var nSemanas = Object.keys(semanasUnicas).length || 1;
+
+  var tiposOrden = ['JR','JRS','PICARROCA','RB3'];
+  var byTipo = {};
+  filtered.forEach(function(d) {
+    var tipo = tipoEquipo(d.equipo);
+    if (tiposOrden.indexOf(tipo) === -1) return;
+    if (!byTipo[tipo]) byTipo[tipo] = { equipos: {}, eqSem: {}, np: 0, pl: 0 };
+    byTipo[tipo].equipos[d.equipo] = true;
+    if (d.semana) byTipo[tipo].eqSem[d.equipo + '|' + d.semana] = true;
+    var h = parseFloat(d.detencion_total_horas) || 0;
+    if (d.mantenimiento === 'NP') byTipo[tipo].np += h;
+    if (d.mantenimiento === 'PL') byTipo[tipo].pl += h;
+  });
+
+  var totalCal = 0, totalNP = 0, totalPL = 0;
+  var rows = [];
+  tiposOrden.forEach(function(tipo) {
+    var t = byTipo[tipo];
+    var nEq = FLOTA_EQUIPOS[tipo].length;
+    var np = t ? t.np : 0;
+    var pl = t ? t.pl : 0;
+    var cal = t ? Object.keys(t.eqSem).length * 168 : nEq * nSemanas * 168;
+    var denom = cal - pl;
+    var disp = denom > 0 ? (cal - np - pl) / denom * 100 : 100;
+    var incl = window._flotaIncluir[tipo];
+    rows.push({ tipo: tipo, nEq: nEq, np: np, pl: pl, disp: disp, cal: cal, incl: incl });
+    if (incl) { totalCal += cal; totalNP += np; totalPL += pl; }
+  });
+
+  var denomT = totalCal - totalPL;
+  var dispT = denomT > 0 ? (totalCal - totalNP - totalPL) / denomT * 100 : 100;
+
+  var maxIndisp = Math.max.apply(null, rows.map(function(r){ return 100 - r.disp; }).concat([1]));
+  var html = rows.map(function(r) {
+    var indisp = 100 - r.disp;
+    var barW = maxIndisp > 0 ? (indisp / maxIndisp * 100) : 0;
+    var color = r.disp >= 80 ? '#16a34a' : r.disp >= 70 ? '#d97706' : '#dc2626';
+    var opacity = r.incl ? '1' : '0.4';
+    var chk = r.incl ? 'checked' : '';
+    return '<tr style="opacity:' + opacity + '">' +
+      '<td><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:700"><input type="checkbox" ' + chk + ' onchange="toggleFlotaTipo(\'' + r.tipo + '\')" style="accent-color:var(--primary);width:14px;height:14px"/> ' + r.tipo + '</label></td>' +
+      '<td style="text-align:center">' + r.nEq + '</td>' +
+      '<td style="text-align:center;color:#dc2626;font-weight:700">' + r.np.toFixed(1) + '</td>' +
+      '<td style="text-align:center;color:#d97706;font-weight:700">' + r.pl.toFixed(1) + '</td>' +
+      '<td style="text-align:center;font-weight:800;color:' + color + '">' + r.disp.toFixed(1) + '%</td>' +
+      '<td style="text-align:center;font-weight:700">' + indisp.toFixed(1) + '%</td>' +
+      '<td><div class="pareto-bar-wrap"><div class="pareto-bar" style="width:' + barW + '%;background:' + color + '"></div></div></td>' +
+      '</tr>';
+  }).join('');
+
+  var colorT = dispT >= 80 ? '#16a34a' : dispT >= 70 ? '#d97706' : '#dc2626';
+  html += '<tr style="border-top:2px solid var(--border);font-weight:800">' +
+    '<td>TOTAL</td><td></td>' +
+    '<td style="text-align:center;color:#dc2626">' + totalNP.toFixed(1) + '</td>' +
+    '<td style="text-align:center;color:#d97706">' + totalPL.toFixed(1) + '</td>' +
+    '<td style="text-align:center;color:' + colorT + '">' + dispT.toFixed(1) + '%</td>' +
+    '<td style="text-align:center">' + (100 - dispT).toFixed(1) + '%</td><td></td></tr>';
+
+  document.getElementById('tblDispFlota').innerHTML = html;
+}
+
+function renderTablasSistema(todos) {
+  var np = filtrarNP(todos);
+
+  // Helper: agrupar fallas + horas por campo
+  function agruparNP(campo) {
+    var map = {};
+    np.forEach(function(d) {
+      var k = (d[campo] || 'Sin ' + campo).trim();
+      if (!map[k]) map[k] = { n: 0, h: 0 };
+      map[k].n++;
+      map[k].h += parseFloat(d.detencion_total_horas) || 0;
+    });
+    return Object.entries(map).sort(function(a, b) { return b[1].n - a[1].n; });
+  }
+
+  // Por sistema
+  var sysList = agruparNP('sistemas');
+  document.getElementById('tblSistema').innerHTML = sysList.map(function(e){
+    return '<tr><td>' + e[0] + '</td><td style="font-weight:700;text-align:center">' + e[1].n + '</td><td style="text-align:center;color:#dc2626">' + e[1].h.toFixed(1) + '</td></tr>';
+  }).join('') || '<tr><td colspan="3" style="color:var(--text2);text-align:center">Sin datos</td></tr>';
+
+  // Por subsistema
+  var subList = agruparNP('subsistemas');
+  document.getElementById('tblSubsistema').innerHTML = subList.map(function(e){
+    return '<tr><td>' + e[0] + '</td><td style="font-weight:700;text-align:center">' + e[1].n + '</td><td style="text-align:center;color:#dc2626">' + e[1].h.toFixed(1) + '</td></tr>';
+  }).join('') || '<tr><td colspan="3" style="color:var(--text2);text-align:center">Sin datos</td></tr>';
+
+  // Por componente (Pareto)
+  var compList = agruparNP('componente');
+  var totalFallas = compList.reduce(function(s, e) { return s + e[1].n; }, 0);
+  var acum = 0;
+  document.getElementById('tblComponente').innerHTML = compList.map(function(e){
+    acum += e[1].n;
+    var pctAcum = totalFallas > 0 ? (acum / totalFallas * 100) : 0;
+    var barW = Math.round(pctAcum);
+    return '<tr><td>' + e[0] + '</td><td style="text-align:center;font-weight:700">' + e[1].n + '</td><td style="text-align:center;color:#dc2626">' + e[1].h.toFixed(1) + '</td>' +
+      '<td><div class="pareto-bar-wrap"><div class="pareto-bar" style="width:' + barW + 'px"></div><span style="font-size:10px">' + pctAcum.toFixed(1) + '%</span></div></td></tr>';
+  }).join('') || '<tr><td colspan="4" style="color:var(--text2);text-align:center">Sin datos</td></tr>';
+
+  // Por causa (tipo_de_perdida)
+  var causaList = agruparNP('tipo_de_perdida');
+  document.getElementById('tblCausa').innerHTML = causaList.map(function(e){
+    return '<tr><td>' + e[0] + '</td><td style="font-weight:700;text-align:center">' + e[1].n + '</td><td style="text-align:center;color:#dc2626">' + e[1].h.toFixed(1) + '</td></tr>';
+  }).join('') || '<tr><td colspan="3" style="color:var(--text2);text-align:center">Sin datos</td></tr>';
+}
+
+function renderRepetitivas(todos) {
+  var np = filtrarNP(todos);
+  var rMap = {};
+  np.forEach(function(d){
+    var key = (d.equipo||'?') + '||' + (d.componente||'Sin componente').trim();
+    rMap[key] = (rMap[key]||0) + 1;
+  });
+  var lista = Object.entries(rMap).filter(function(e){ return e[1] >= 2; }).sort(function(a,b){ return b[1]-a[1]; });
+  window._repetitivasData = lista;
+  document.getElementById('tblRepetitivas').innerHTML = lista.map(function(e, idx){
+    var parts = e[0].split('||');
+    return '<tr><td><strong>' + parts[0] + '</strong></td><td>' + parts[1] + '</td><td style="font-weight:800;color:#dc2626;text-align:center">' + e[1] + '</td><td style="text-align:center"><button class="btn-ia" onclick="analizarRepetitivaFila(' + idx + ',this)">Analizar</button><div id="iaRep' + idx + '" style="display:none;margin-top:6px;text-align:left;font-size:11px"></div></td></tr>';
+  }).join('') || '<tr><td colspan="4" style="color:var(--text2);text-align:center">Sin fallas repetitivas en el período</td></tr>';
+}
+
+function renderJackKnife(todos) {
+  var np = filtrarNP(todos);
+  var eqMap = {};
+  np.forEach(function(d){
+    var eq = d.equipo || '?';
+    if (!eqMap[eq]) eqMap[eq] = { fallas: 0, horasNP: 0 };
+    eqMap[eq].fallas++;
+    eqMap[eq].horasNP += parseFloat(d.detencion_total_horas)||0;
+  });
+  var puntos = Object.entries(eqMap).map(function(e){
+    return { eq: e[0], fallas: e[1].fallas, mttr: e[1].fallas > 0 ? e[1].horasNP / e[1].fallas : 0 };
+  });
+  if (!puntos.length) return;
+
+  var fallasArr = puntos.map(function(p){ return p.fallas; });
+  var mttrArr = puntos.map(function(p){ return p.mttr; });
+  var medFallas = fallasArr.slice().sort(function(a,b){ return a-b; })[Math.floor(fallasArr.length/2)] || 0;
+  var medMttr = mttrArr.slice().sort(function(a,b){ return a-b; })[Math.floor(mttrArr.length/2)] || 0;
+
+  mkChart('chartJackKnife', {
+    type: 'bubble',
+    data: {
+      datasets: [{
+        label: 'Equipos',
+        data: puntos.map(function(p){ return { x: p.fallas, y: p.mttr, r: 8, eq: p.eq }; }),
+        backgroundColor: puntos.map(function(p){
+          if (p.fallas >= medFallas && p.mttr >= medMttr) return 'rgba(220,38,38,0.7)';
+          if (p.fallas >= medFallas && p.mttr < medMttr) return 'rgba(217,119,6,0.7)';
+          if (p.fallas < medFallas && p.mttr >= medMttr) return 'rgba(30,64,175,0.7)';
+          return 'rgba(22,163,74,0.7)';
+        }),
+        borderColor: '#fff',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx){
+              var d = ctx.raw;
+              return (d.eq||'') + ' | Fallas: ' + d.x + ' | MTTR: ' + (d.y||0).toFixed(1) + 'h';
+            }
+          }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: 'N° Fallas', font: { size: 11 } }, beginAtZero: true },
+        y: { title: { display: true, text: 'MTTR (h)', font: { size: 11 } }, beginAtZero: true }
+      }
+    },
+    plugins: [{
+      id: 'jkLines',
+      afterDraw: function(chart) {
+        var ctx2 = chart.ctx;
+        var xScale = chart.scales.x;
+        var yScale = chart.scales.y;
+        var xMed = xScale.getPixelForValue(medFallas);
+        var yMed = yScale.getPixelForValue(medMttr);
+        ctx2.save();
+        // Median lines
+        ctx2.setLineDash([4,3]);
+        ctx2.strokeStyle = '#6b7280';
+        ctx2.lineWidth = 1;
+        ctx2.beginPath(); ctx2.moveTo(xMed, chart.chartArea.top); ctx2.lineTo(xMed, chart.chartArea.bottom); ctx2.stroke();
+        ctx2.beginPath(); ctx2.moveTo(chart.chartArea.left, yMed); ctx2.lineTo(chart.chartArea.right, yMed); ctx2.stroke();
+        ctx2.setLineDash([]);
+        ctx2.font = '9px sans-serif'; ctx2.fillStyle = '#6b7280';
+        ctx2.fillText('AGUDO', xMed + 4, chart.chartArea.top + 14);
+        ctx2.fillText('CRÓNICO', chart.chartArea.left + 4, yMed - 4);
+
+        // Equipment labels with anti-overlap
+        ctx2.textAlign = 'center';
+        var ds = chart.data.datasets[0];
+        if (!ds || !ds.data) { ctx2.restore(); return; }
+        var rects = [];
+        var labels = ds.data.map(function(d, i) {
+          var meta = chart.getDatasetMeta(0).data[i];
+          if (!meta) return null;
+          var px = meta.x, py = meta.y;
+          var line1 = d.eq || '';
+          var line2 = d.x + 'F | ' + (d.y||0).toFixed(1) + 'h';
+          ctx2.font = 'bold 10px sans-serif';
+          var w1 = ctx2.measureText(line1).width;
+          ctx2.font = '9px sans-serif';
+          var w2 = ctx2.measureText(line2).width;
+          var w = Math.max(w1, w2) + 6;
+          var h = 24;
+          return { line1: line1, line2: line2, px: px, py: py, w: w, h: h };
+        }).filter(Boolean);
+
+        // Position labels: try above, below, right, left, diagonals
+        labels.forEach(function(lb) {
+          var offsets = [
+            { x: 0, y: -20 },
+            { x: 0, y: 24 },
+            { x: lb.w / 2 + 10, y: -4 },
+            { x: -(lb.w / 2 + 10), y: -4 },
+            { x: lb.w / 2 + 10, y: -14 },
+            { x: -(lb.w / 2 + 10), y: -14 },
+            { x: lb.w / 2 + 10, y: 10 },
+            { x: -(lb.w / 2 + 10), y: 10 }
+          ];
+          var placed = false;
+          for (var oi = 0; oi < offsets.length; oi++) {
+            var cx = lb.px + offsets[oi].x;
+            var cy = lb.py + offsets[oi].y;
+            var r = { x: cx - lb.w / 2, y: cy - lb.h / 2, w: lb.w, h: lb.h };
+            var overlap = false;
+            for (var ri = 0; ri < rects.length; ri++) {
+              var o = rects[ri];
+              if (r.x < o.x + o.w && r.x + r.w > o.x && r.y < o.y + o.h && r.y + r.h > o.y) { overlap = true; break; }
+            }
+            if (!overlap && cx > chart.chartArea.left && cx < chart.chartArea.right && cy > chart.chartArea.top - 5 && cy < chart.chartArea.bottom + 5) {
+              rects.push(r);
+              ctx2.strokeStyle = '#9ca3af';
+              ctx2.lineWidth = 0.5;
+              ctx2.beginPath(); ctx2.moveTo(lb.px, lb.py); ctx2.lineTo(cx, cy); ctx2.stroke();
+              ctx2.fillStyle = 'rgba(255,255,255,0.9)';
+              ctx2.strokeStyle = '#e5e7eb';
+              ctx2.lineWidth = 0.5;
+              ctx2.fillRect(r.x, r.y, r.w, r.h);
+              ctx2.strokeRect(r.x, r.y, r.w, r.h);
+              ctx2.font = 'bold 10px sans-serif';
+              ctx2.fillStyle = '#1f2937';
+              ctx2.fillText(lb.line1, cx, cy - 2);
+              ctx2.font = '9px sans-serif';
+              ctx2.fillStyle = '#6b7280';
+              ctx2.fillText(lb.line2, cx, cy + 9);
+              placed = true;
+              break;
+            }
+          }
+          if (!placed) {
+            ctx2.fillStyle = 'rgba(255,255,255,0.8)';
+            ctx2.fillRect(lb.px - lb.w / 2, lb.py - 26, lb.w, lb.h);
+            ctx2.font = 'bold 10px sans-serif';
+            ctx2.fillStyle = '#1f2937';
+            ctx2.fillText(lb.line1, lb.px, lb.py - 16);
+            ctx2.font = '9px sans-serif';
+            ctx2.fillStyle = '#6b7280';
+            ctx2.fillText(lb.line2, lb.px, lb.py - 5);
+          }
+        });
+        ctx2.restore();
+      }
+    }]
+  });
+}
+
+function renderParetoComp(todos) {
+  var np = filtrarNP(todos);
+  var compMap = {};
+  np.forEach(function(d){ var c = (d.componente||'Sin componente').trim(); compMap[c]=(compMap[c]||0)+1; });
+  var lista = Object.entries(compMap).sort(function(a,b){ return b[1]-a[1]; }).slice(0,15);
+  if (!lista.length) return;
+  var total = lista.reduce(function(s,e){ return s+e[1]; }, 0);
+  var acum = 0;
+  var acumLine = lista.map(function(e){ acum += e[1]; return parseFloat((acum/total*100).toFixed(1)); });
+
+  mkChart('chartParetoComp', {
+    type: 'bar',
+    data: {
+      labels: lista.map(function(e){ return e[0]; }),
+      datasets: [
+        { type: 'bar', label: 'N° Fallas', data: lista.map(function(e){ return e[1]; }), backgroundColor: '#E8571A', borderRadius: 3, yAxisID: 'y' },
+        { type: 'line', label: '% Acum.', data: acumLine, borderColor: '#1e40af', backgroundColor: 'transparent', pointRadius: 3, tension: 0.1, yAxisID: 'y2' }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { maxRotation: 45, font: { size: 9 } } },
+        y: { beginAtZero: true, position: 'left' },
+        y2: { beginAtZero: true, position: 'right', max: 100, grid: { drawOnChartArea: false }, ticks: { callback: function(v){ return v + '%'; } } }
+      }
+    }
+  });
+}
+
+function renderTablaDispEquipo(todos) {
+  var equipos = [...new Set(todos.map(function(d){ return d.equipo; }))].filter(Boolean).sort();
+  if (!equipos.length) { document.getElementById('tblDispEquipo').innerHTML = '<tr><td colspan="9" style="color:var(--text2);text-align:center">Sin datos</td></tr>'; return; }
+
+  var rows = equipos.map(function(eq) {
+    var datosEq = todos.filter(function(d){ return d.equipo === eq; });
+    var cap = sumHorasCap(datosEq);
+    var horasNP = cap.np;
+    var horasPL = cap.pl;
+    var nFallas = filtrarNP(datosEq).length;
+    var nSem = new Set(datosEq.map(function(d){ return d.semana; }).filter(Boolean)).size || 1;
+    var cal = nSem * 168;
+    var denom = cal - horasPL;
+    var disp = denom > 0 ? Math.max(0, (cal - horasNP - horasPL) / denom * 100) : 0;
+    var indisp = 100 - disp;
+    var mttr = nFallas > 0 ? horasNP / nFallas : 0;
+    var mtbf = nFallas > 0 ? (cal - horasNP - horasPL) / nFallas : 0;
+    return { eq: eq, tipo: tipoEquipo(eq), nFallas: nFallas, horasNP: horasNP, horasPL: horasPL, disp: disp, indisp: indisp, mttr: mttr, mtbf: mtbf };
+  });
+
+  // Grupos para promedios
+  var tiposUnicos = [...new Set(rows.map(function(r){ return r.tipo; }))];
+
+  var html = rows.map(function(r) {
+    var bg = r.disp >= 90 ? '#f0fdf4' : r.disp >= 60 ? '#fefce8' : '#fef2f2';
+    return '<tr style="background:' + bg + '">' +
+      '<td><strong>' + r.eq + '</strong></td>' +
+      '<td style="text-align:center">' + r.nFallas + '</td>' +
+      '<td style="text-align:center;color:#dc2626;font-weight:700">' + r.horasNP.toFixed(1) + '</td>' +
+      '<td>' + dispBadge(r.disp) + '</td>' +
+      '<td style="text-align:center;font-weight:700;color:#dc2626">' + r.indisp.toFixed(1) + '%</td>' +
+      '<td style="text-align:center">' + r.mttr.toFixed(1) + '</td>' +
+      '<td style="text-align:center">' + r.mtbf.toFixed(1) + '</td>' +
+      '<td style="text-align:center;color:#d97706">' + r.horasPL.toFixed(1) + '</td>' +
+      '<td style="text-align:center">' + (r.horasNP + r.horasPL).toFixed(1) + '</td>' +
+      '</tr>';
+  }).join('');
+
+  // Filas de promedio por tipo
+  tiposUnicos.forEach(function(tipo) {
+    var subset = rows.filter(function(r){ return r.tipo === tipo; });
+    if (!subset.length) return;
+    var avgDisp = subset.reduce(function(s,r){ return s+r.disp; }, 0) / subset.length;
+    var avgIndisp = subset.reduce(function(s,r){ return s+r.indisp; }, 0) / subset.length;
+    var sumNP = subset.reduce(function(s,r){ return s+r.horasNP; }, 0);
+    var sumPL = subset.reduce(function(s,r){ return s+r.horasPL; }, 0);
+    html += '<tr style="background:#f8fafc;font-weight:700;border-top:2px solid var(--border)">' +
+      '<td>PROM. ' + tipo + '</td>' +
+      '<td style="text-align:center">' + subset.reduce(function(s,r){ return s+r.nFallas; },0) + '</td>' +
+      '<td style="text-align:center;color:#dc2626">' + sumNP.toFixed(1) + '</td>' +
+      '<td>' + dispBadge(avgDisp) + '</td>' +
+      '<td style="text-align:center;color:#dc2626">' + avgIndisp.toFixed(1) + '%</td>' +
+      '<td colspan="2"></td>' +
+      '<td style="text-align:center;color:#d97706">' + sumPL.toFixed(1) + '</td>' +
+      '<td style="text-align:center">' + (sumNP+sumPL).toFixed(1) + '</td>' +
+      '</tr>';
+  });
+
+  document.getElementById('tblDispEquipo').innerHTML = html;
+}
+
+if (!window._dispEqOrden) window._dispEqOrden = 'desc';
+if (!window._indispEqOrden) window._indispEqOrden = 'desc';
+
+function renderGraficosDisp(todos) {
+  window._dispEqDatos = todos;
+  renderDispEqCharts();
+}
+
+function renderDispEqCharts() {
+  var todos = window._dispEqDatos;
+  if (!todos || !todos.length) return;
+  var equipos = [...new Set(todos.map(function(d){ return d.equipo; }))].filter(Boolean).sort();
+  if (!equipos.length) return;
+
+  var stats = equipos.map(function(eq) {
+    var datosEq = todos.filter(function(d){ return d.equipo===eq; });
+    var cap = sumHorasCap(datosEq);
+    var np = cap.np;
+    var pl = cap.pl;
+    var nSem = new Set(datosEq.map(function(d){ return d.semana; }).filter(Boolean)).size || 1;
+    var cal = nSem * 168;
+    var denom = cal - pl;
+    var disp = denom > 0 ? Math.max(0, (cal - np - pl) / denom * 100) : 0;
+    return { eq: eq, disp: disp, indisp: 100 - disp };
+  });
+
+  // Sort for Disponibilidad chart
+  var statsDisp = stats.slice().sort(function(a, b) {
+    return window._dispEqOrden === 'desc' ? b.disp - a.disp : a.disp - b.disp;
+  });
+  var btnD = document.getElementById('btnOrdenDisp');
+  if (btnD) btnD.innerHTML = window._dispEqOrden === 'desc' ? '&#9660; Mayor' : '&#9650; Menor';
+
+  var labelsD = statsDisp.map(function(s){ return s.eq; });
+  var coloresDisp = statsDisp.map(function(s){ return s.disp >= 90 ? '#16a34a' : s.disp >= 60 ? '#d97706' : '#dc2626'; });
+
+  mkChart('chartDispEquipo', {
+    type: 'bar',
+    data: {
+      labels: labelsD,
+      datasets: [
+        { label: '% Disponibilidad', data: statsDisp.map(function(s){ return s.disp.toFixed(1); }), backgroundColor: coloresDisp, borderRadius: 3 },
+        { type: 'line', label: 'Meta 90%', data: Array(labelsD.length).fill(90), borderColor: '#dc2626', borderDash: [5,3], pointRadius: 0, borderWidth: 1.5 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
+      scales: { y: { beginAtZero: false, min: 0, max: 105, ticks: { callback: function(v){ return v+'%'; } } }, x: { ticks: { maxRotation: 45, font: { size: 10 } } } }
+    }
+  });
+
+  // Sort for Indisponibilidad chart
+  var statsIndisp = stats.slice().sort(function(a, b) {
+    return window._indispEqOrden === 'desc' ? b.indisp - a.indisp : a.indisp - b.indisp;
+  });
+  var btnI = document.getElementById('btnOrdenIndisp');
+  if (btnI) btnI.innerHTML = window._indispEqOrden === 'desc' ? '&#9660; Mayor' : '&#9650; Menor';
+
+  var labelsI = statsIndisp.map(function(s){ return s.eq; });
+
+  mkChart('chartIndispEquipo', {
+    type: 'bar',
+    data: {
+      labels: labelsI,
+      datasets: [{ label: '% Indisponibilidad', data: statsIndisp.map(function(s){ return s.indisp.toFixed(1); }), backgroundColor: '#dc2626', borderRadius: 3 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
+      scales: { y: { beginAtZero: true, ticks: { callback: function(v){ return v+'%'; } } }, x: { ticks: { maxRotation: 45, font: { size: 10 } } } }
+    }
+  });
+}
+
+function renderHeatmap() {
+  // Usa filtrar(0) = sin filtro de semana, pero respeta todos los demás filtros
+  var datosTodos = filtrar(0);
+
+  var semanasSet = [...new Set(datosTodos.map(function(d){ return parseInt(d.semana); }))].filter(Boolean).sort(function(a,b){ return a-b; });
+  var semanas = semanasSet.slice(-10);
+  var equipos = [...new Set(datosTodos.map(function(d){ return d.equipo; }))].filter(Boolean).sort();
+
+  if (!semanas.length || !equipos.length) {
+    document.getElementById('heatmapContainer').innerHTML = noDataHtml('Sin datos para el mapa de calor');
+    return;
+  }
+
+  var html = '<div class="heatmap-grid" style="grid-template-columns:100px ' + Array(semanas.length).fill('1fr').join(' ') + '">';
+
+  html += '<div class="hm-label" style="font-weight:700;font-size:10px;color:var(--text2)">Equipo</div>';
+  semanas.forEach(function(s){ html += '<div class="hm-label" style="justify-content:center;font-size:10px;color:var(--text2)">S' + s + '</div>'; });
+
+  equipos.forEach(function(eq) {
+    html += '<div class="hm-label">' + eq + '</div>';
+    semanas.forEach(function(sem) {
+      var datosCell = datosTodos.filter(function(d){ return d.equipo === eq && parseInt(d.semana) === sem; });
+      if (!datosCell.length) {
+        html += '<div class="hm-cell gris">—</div>';
+        return;
+      }
+      var np = sumHoras(filtrarNP(datosCell));
+      var pl = sumHoras(filtrarPL(datosCell));
+      var denom = 168 - pl;
+      var disp = denom > 0 ? Math.max(0, (168 - np - pl) / denom * 100) : 0;
+      var cls = disp >= 80 ? 'verde' : disp >= 60 ? 'amarillo' : 'rojo';
+      html += '<div class="hm-cell ' + cls + '" title="' + eq + ' S' + sem + ': ' + disp.toFixed(1) + '%">' + disp.toFixed(0) + '%</div>';
+    });
+  });
+
+  html += '</div>';
+  document.getElementById('heatmapContainer').innerHTML = html;
+}
+
+// Equipos de la flota de los tipos seleccionados que tienen al menos un registro en los datos
+function flotaDeTipos(tipos, rows) {
+  return tipos.reduce(function(n, t) {
+    var hay = rows.some(function(d) { return tipoEquipo(d.equipo) === t; });
+    return n + (hay && FLOTA_EQUIPOS[t] ? FLOTA_EQUIPOS[t].length : 0);
+  }, 0);
+}
+
+function renderDispDia(todos) {
+  window._dispDiaDatos = todos;
+  if (!todos || !todos.length) { document.getElementById('tablaDispDia').innerHTML = noDataHtml(); return; }
+  var dias = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+
+  // Filtro local de tipos para esta tabla
+  var ddTipos = [];
+  if (document.getElementById('ddJR').checked) ddTipos.push('JR');
+  if (document.getElementById('ddJRS').checked) ddTipos.push('JRS');
+  if (document.getElementById('ddPICA').checked) ddTipos.push('PICARROCA');
+  if (document.getElementById('ddRB3').checked) ddTipos.push('RB3');
+  if (!ddTipos.length) ddTipos = ['JR','JRS','PICARROCA','RB3'];
+
+  // Filtrar datos por tipos seleccionados
+  var filtered = todos.filter(function(d) {
+    return ddTipos.indexOf(tipoEquipo(d.equipo)) !== -1;
+  });
+
+  // Total equipos: si datos filtrados tienen menos equipos únicos que la flota,
+  // usar equipos únicos (usuario filtró por equipo específico)
+  var eqUnicos = new Set();
+  filtered.forEach(function(d) { if (d.equipo) eqUnicos.add(d.equipo); });
+  var totalFlota = getFiltros().equiposEsp.length ? eqUnicos.size : flotaDeTipos(ddTipos, filtered);
+  if (!totalFlota) totalFlota = 1;
+
+  // Agrupar por fecha con cap 12h por equipo+turno
+  var diaMap = {};
+  filtered.forEach(function(d) {
+    if (!d.fecha_inicio) return;
+    var key = d.fecha_inicio.slice(0, 10);
+    if (!diaMap[key]) diaMap[key] = { equipos: new Set(), regs: [] };
+    diaMap[key].equipos.add(d.equipo);
+    diaMap[key].regs.push(d);
+  });
+  Object.keys(diaMap).forEach(function(key) {
+    var cap = sumHorasCap(diaMap[key].regs);
+    diaMap[key].np = cap.np;
+    diaMap[key].pl = cap.pl;
+  });
+
+  // Solo mostrar los días que tienen datos, ordenados de más antiguo a más reciente
+  var fechasConDatos = Object.keys(diaMap).sort();
+  if (!fechasConDatos.length) { document.getElementById('tablaDispDia').innerHTML = noDataHtml(); return; }
+
+  var html = '<table style="width:100%"><thead><tr><th>Fecha</th><th>Día</th><th>Equipos</th><th>Horas NP</th><th>Horas PL</th><th>Disp Contractual %</th><th>Disp Total %</th><th>Indisp Total %</th></tr></thead><tbody>';
+  var semActual = -1;
+  var sumCon = 0, sumTot = 0;
+  fechasConDatos.forEach(function(key) {
+    var p = key.split('-');
+    var dt = new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]));
+    var dowIdx = (dt.getDay() + 6) % 7;
+    var diaName = dias[dowIdx];
+    var semNum = parseInt(filtered.find(function(d) { return d.fecha_inicio && d.fecha_inicio.slice(0, 10) === key; })?.semana) || 0;
+
+    if (semNum !== semActual) {
+      if (semActual !== -1) html += '<tr style="height:2px;background:var(--primary)"><td colspan="8" style="padding:0"></td></tr>';
+      html += '<tr style="background:var(--surface2)"><td colspan="8"style="padding:6px 10px;font-weight:700;font-size:12px;color:var(--text2)">Semana ' + semNum + '</td></tr>';
+      semActual = semNum;
+    }
+
+    var info = diaMap[key];
+    var nEqConDet = info.equipos.size;
+    var cal = totalFlota * 24;
+    var disp = cal > 0 ? Math.max(0, (cal - info.np - info.pl) / cal * 100) : 100;
+    var dispCon = cal - info.pl > 0 ? Math.max(0, (cal - info.np - info.pl) / (cal - info.pl) * 100) : 100;
+    sumCon += dispCon; sumTot += disp;
+    var indisp = 100 - disp;
+    var bg = disp >= 90 ? '#f0fdf4' : disp >= 70 ? '#fefce8' : '#fef2f2';
+    html += '<tr style="background:' + bg + '"><td>' + key + '</td><td><strong>' + diaName + '</strong></td><td style="text-align:center">' + totalFlota + ' (' + nEqConDet + ' c/det)</td>' +
+      '<td style="text-align:center;color:#dc2626;font-weight:700">' + info.np.toFixed(1) + '</td>' +
+      '<td style="text-align:center;color:#d97706">' + info.pl.toFixed(1) + '</td>' +
+      '<td>' + dispBadge(dispCon) + '</td>' +
+      '<td>' + dispBadge(disp) + '</td>' +
+      '<td style="text-align:center;color:#dc2626;font-weight:700">' + indisp.toFixed(1) + '%</td></tr>';
+  });
+  var nDias = fechasConDatos.length;
+  html += '<tr style="font-weight:700;border-top:2px solid var(--primary)"><td colspan="5">PROMEDIO ' + nDias + ' días</td>' +
+    '<td>' + dispBadge(sumCon / nDias) + '</td><td>' + dispBadge(sumTot / nDias) + '</td>' +
+    '<td style="text-align:center;color:#dc2626">' + (100 - sumTot / nDias).toFixed(1) + '%</td></tr>';
+  html += '</tbody></table>';
+  document.getElementById('tablaDispDia').innerHTML = html;
+}
+
+function renderEqac(todos) {
+  var eqac = todos.filter(function(d) { return (d.tipo_de_perdida || '').trim() === 'EQAC'; });
+  var totalH = eqac.reduce(function(s, d) { return s + (parseFloat(d.detencion_total_horas) || 0); }, 0);
+  document.getElementById('eqacResumen').textContent = eqac.length + ' eventos EQAC — ' + totalH.toFixed(1) + ' horas totales';
+  if (!eqac.length) { document.getElementById('tblEqac').innerHTML = '<tr><td colspan="7" style="color:var(--text2);text-align:center">Sin EQAC en el período</td></tr>'; return; }
+  var sorted = eqac.sort(function(a, b) { return (b.fecha_inicio || '') > (a.fecha_inicio || '') ? 1 : -1; });
+  document.getElementById('tblEqac').innerHTML = sorted.map(function(d) {
+    var desc = (d.evento || '—').replace(/\r?\n/g, ' ');
+    return '<tr><td style="white-space:nowrap">' + (d.fecha_inicio ? d.fecha_inicio.slice(0, 10) : '—') + '</td>' +
+      '<td style="white-space:nowrap"><strong>' + (d.equipo || '—') + '</strong></td>' +
+      '<td style="white-space:nowrap">' + (d.sistemas || '—') + '</td>' +
+      '<td style="white-space:nowrap">' + (d.subsistemas || '—') + '</td>' +
+      '<td style="white-space:nowrap">' + (d.componente || '—') + '</td>' +
+      '<td style="font-weight:700;color:#dc2626;text-align:center;white-space:nowrap">' + (parseFloat(d.detencion_total_horas) || 0).toFixed(1) + '</td>' +
+      '<td style="font-size:11px;min-width:300px;word-wrap:break-word;white-space:normal;line-height:1.4">' + desc + '</td></tr>';
+  }).join('');
+}
+
+function renderTRF(todos) {
+  var np = filtrarNP(todos);
+  var ventana = parseInt(document.getElementById('trfVentana').value) || 14;
+
+  // Ordenar por fecha
+  var sorted = np.filter(function(d){ return d.fecha_inicio; }).sort(function(a,b){
+    return a.fecha_inicio.localeCompare(b.fecha_inicio);
+  });
+
+  // Para cada evento NP, buscar si el mismo equipo+subsistema tuvo otro NP antes dentro de la ventana
+  var pares = [];
+  var reincidentes = new Set();
+
+  for (var i = 0; i < sorted.length; i++) {
+    var d = sorted[i];
+    var sub = (d.subsistemas || '').trim();
+    if (!sub || !d.equipo) continue;
+    var p = d.fecha_inicio.slice(0,10).split('-');
+    var fechaD = new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
+
+    for (var j = 0; j < i; j++) {
+      var prev = sorted[j];
+      if (prev.equipo !== d.equipo) continue;
+      if ((prev.subsistemas || '').trim() !== sub) continue;
+      var pp = prev.fecha_inicio.slice(0,10).split('-');
+      var fechaP = new Date(parseInt(pp[0]), parseInt(pp[1])-1, parseInt(pp[2]));
+      var diffDias = Math.round((fechaD - fechaP) / 86400000);
+      if (diffDias > 0 && diffDias <= ventana) {
+        pares.push({ equipo: d.equipo, sub: sub, prev: prev, curr: d, dias: diffDias });
+        reincidentes.add(i);
+        break;
+      }
+    }
+  }
+
+  var totalNP = sorted.length;
+  var totalReinc = reincidentes.size;
+  var trf = totalNP > 0 ? (totalReinc / totalNP * 100) : 0;
+
+  // KPIs
+  document.getElementById('trfKpi').innerHTML =
+    kpiCard('TRF', trf.toFixed(1) + '%', 'ventana ' + ventana + ' días', trf > 20 ? '#dc2626' : trf > 10 ? '#d97706' : '#16a34a', '') +
+    kpiCard('Reincidentes', totalReinc, 'de ' + totalNP + ' eventos NP', '#dc2626', '') +
+    kpiCard('Pares Detectados', pares.length, 'mismo equipo+subsistema', '#6366f1', '');
+
+  // Tabla de pares
+  window._trfPares = pares;
+  document.getElementById('tblTRF').innerHTML = pares.slice(0, 20).map(function(p, idx) {
+    var prevEvt = (p.prev.evento || '').substring(0, 60).replace(/</g, '&lt;');
+    var currEvt = (p.curr.evento || '').substring(0, 60).replace(/</g, '&lt;');
+    return '<tr>' +
+      '<td><strong>' + p.equipo + '</strong></td>' +
+      '<td>' + p.sub + '</td>' +
+      '<td style="font-size:11px;max-width:180px;white-space:normal">' + prevEvt + '</td>' +
+      '<td style="font-size:11px;max-width:180px;white-space:normal">' + currEvt + '</td>' +
+      '<td style="text-align:center;font-weight:700;color:' + (p.dias <= 7 ? '#dc2626' : '#d97706') + '">' + p.dias + 'd</td>' +
+      '<td style="text-align:center"><button class="btn-ia" onclick="analizarTRFPar(' + idx + ',this)">IA</button></td>' +
+      '</tr>';
+  }).join('') || '<tr><td colspan="6" style="color:var(--text2);text-align:center">Sin reincidencias en el período (ventana ' + ventana + ' días)</td></tr>';
+}
+
+async function analizarTRFPar(idx, btn) {
+  var par = window._trfPares[idx];
+  if (!par) return;
+  btn.disabled = true; btn.textContent = '...';
+  var box = document.getElementById('iaTRF');
+  box.style.display = 'block'; box.className = 'ia-box loading'; box.textContent = 'Analizando par reincidente...';
+  try {
+    var prompt = 'Reincidencia de falla en equipo minero:\n\n' +
+      'Equipo: ' + par.equipo + '\nSubsistema: ' + par.sub + '\nDías entre eventos: ' + par.dias + '\n\n' +
+      'EVENTO ORIGINAL (' + par.prev.fecha_inicio.slice(0,10) + '):\n' + (par.prev.evento || 'Sin descripción') + '\n\n' +
+      'REINCIDENCIA (' + par.curr.fecha_inicio.slice(0,10) + '):\n' + (par.curr.evento || 'Sin descripción') + '\n\n' +
+      'Resume: 1) Si ambos eventos son realmente la misma falla o son problemas distintos del mismo subsistema, 2) Qué se ejecutó en la primera intervención y si resolvió el problema, 3) Qué cambió o persistió en la reincidencia.';
+    var texto = await llamarIA(prompt);
+    box.className = 'ia-box'; box.textContent = texto;
+  } catch(e) {
+    box.className = 'ia-box error'; box.textContent = 'Error: ' + e.message;
+  }
+  btn.disabled = false; btn.textContent = 'IA';
+}
+
+function renderBadActors(todos) {
+  var np = filtrarNP(todos);
+  var eqMap = {};
+  np.forEach(function(d){
+    var eq = d.equipo || '?';
+    if (!eqMap[eq]) eqMap[eq] = { fallas: 0, horasNP: 0 };
+    eqMap[eq].fallas++;
+    eqMap[eq].horasNP += parseFloat(d.detencion_total_horas)||0;
+  });
+  var lista = Object.entries(eqMap).map(function(e){
+    return { eq: e[0], fallas: e[1].fallas, horasNP: e[1].horasNP, score: e[1].fallas * e[1].horasNP };
+  }).sort(function(a,b){ return b.score - a.score; }).slice(0, 5);
+
+  if (!lista.length) { document.getElementById('tblBadActors').innerHTML = '<tr><td colspan="5" style="color:var(--text2);text-align:center">Sin datos</td></tr>'; return; }
+
+  var maxScore = lista[0].score || 1;
+  document.getElementById('tblBadActors').innerHTML = lista.map(function(e, i) {
+    var barW = Math.round(e.score / maxScore * 160);
+    return '<tr>' +
+      '<td><strong style="color:' + ['#dc2626','#d97706','#E8571A','#1e40af','#6b7280'][i] + '">#' + (i+1) + ' ' + e.eq + '</strong></td>' +
+      '<td style="text-align:center">' + e.fallas + '</td>' +
+      '<td style="text-align:center;color:#dc2626;font-weight:700">' + e.horasNP.toFixed(1) + '</td>' +
+      '<td style="text-align:center;font-weight:800">' + e.score.toFixed(1) + '</td>' +
+      '<td><div class="bad-actor-bar" style="width:' + barW + 'px"></div></td>' +
+      '</tr>';
+  }).join('');
+}
+
+function renderPerdCat(todos) {
+  // Agrupar por semana las horas de cada tipo_de_perdida (categoría)
+  var semSet = [...new Set(todos.map(function(d){ return parseInt(d.semana); }))].filter(Boolean).sort(function(a,b){ return a-b; });
+  var sems = semSet.slice(-12);
+  if (!sems.length) return;
+
+  // Top categorías globales
+  var catCount = {};
+  todos.forEach(function(d){ var c = (d.tipo_de_perdida||d.mantenimiento||'Otro').trim(); catCount[c]=(catCount[c]||0)+1; });
+  var topCats = Object.entries(catCount).sort(function(a,b){ return b[1]-a[1]; }).slice(0,5).map(function(e){ return e[0]; });
+
+  var colors = ['#ef4444','#f59e0b','#3b82f6','#8b5cf6','#10b981'];
+
+  var datasets = topCats.map(function(cat, ci) {
+    return {
+      type: 'bar', label: cat, stack: 'cat',
+      backgroundColor: colors[ci] || '#94a3b8',
+      borderRadius: 2,
+      data: sems.map(function(sem) {
+        var rows = todos.filter(function(d){ return parseInt(d.semana)===sem && (d.tipo_de_perdida||d.mantenimiento||'Otro').trim()===cat; });
+        var n = todos.filter(function(d){ return parseInt(d.semana)===sem; });
+        var nEq = [...new Set(n.map(function(d){ return d.equipo; }))].filter(Boolean).length || 1;
+        var h = rows.reduce(function(s,d){ return s+(parseFloat(d.detencion_total_horas)||0); }, 0);
+        return parseFloat((h / (nEq * 168) * 100).toFixed(2));
+      })
+    };
+  });
+
+  // Línea % InDisp total
+  datasets.push({
+    type: 'line', label: '% InDisp Total', yAxisID: 'y',
+    borderColor: '#1e293b', backgroundColor: 'transparent',
+    pointRadius: 4, tension: 0.3, borderWidth: 2,
+    data: sems.map(function(sem) {
+      var rows = todos.filter(function(d){ return parseInt(d.semana)===sem; });
+      var nEq = [...new Set(rows.map(function(d){ return d.equipo; }))].filter(Boolean).length || 1;
+      var horasNP = rows.filter(function(d){ return d.mantenimiento==='NP'; }).reduce(function(s,d){ return s+(parseFloat(d.detencion_total_horas)||0); }, 0);
+      var horasPL = rows.filter(function(d){ return d.mantenimiento==='PL'; }).reduce(function(s,d){ return s+(parseFloat(d.detencion_total_horas)||0); }, 0);
+      return parseFloat(((horasNP+horasPL)/(nEq*168)*100).toFixed(2));
+    })
+  });
+
+  mkChart('chartPerdCat', {
+    type: 'bar',
+    data: { labels: sems.map(function(s){ return 'S'+s; }), datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
+      scales: {
+        x: { stacked: true, ticks: { font: { size: 10 } } },
+        y: { stacked: true, beginAtZero: true, ticks: { callback: function(v){ return v+'%'; } } }
+      }
+    }
+  });
+}
+
+function renderCascada(todos) {
+  var kpi = calcDispContractual(todos, null);
+  var total = kpi.cal || 1;
+  var horasNP = kpi.horasNP;
+  var horasPL = kpi.horasPL;
+  var horasDisp = Math.max(0, total - horasNP - horasPL);
+  var pNP = parseFloat((horasNP/total*100).toFixed(1));
+  var pPL = parseFloat((horasPL/total*100).toFixed(1));
+  var pDisp = parseFloat((horasDisp/total*100).toFixed(1));
+
+  // Waterfall simulado con floating bars: [base, top]
+  // Barras: "Capacidad", "Pérdida NP", "Pérdida PL", "Disponibilidad"
+  mkChart('chartCascada', {
+    type: 'bar',
+    data: {
+      labels: ['100%\nCapacidad', 'Pérdida NP\n('+pNP+'%)', 'Pérdida PL\n('+pPL+'%)', 'Disponibilidad\n('+pDisp+'%)'],
+      datasets: [
+        // Base invisible (flotante)
+        { label: '_base', data: [0, pDisp+pPL, pDisp, 0], backgroundColor: 'transparent', borderWidth: 0, barPercentage: 0.6 },
+        // Segmento visible
+        {
+          label: 'Valor',
+          data: [100, pNP, pPL, pDisp],
+          backgroundColor: ['#16a34a', '#dc2626', '#d97706', '#16a34a'],
+          borderRadius: 4,
+          barPercentage: 0.6,
+          datalabels: { display: false }
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: function(ctx){ return ctx.datasetIndex===1 ? ctx.parsed.y.toFixed(1)+'%' : null; } } }
+      },
+      scales: {
+        x: { stacked: true, ticks: { font: { size: 10 } } },
+        y: { stacked: true, beginAtZero: true, max: 110, ticks: { callback: function(v){ return v+'%'; } } }
+      }
+    }
+  });
+}
+
+function renderParetoDisp(todos) {
+  var equipos = [...new Set(todos.map(function(d){ return d.equipo; }))].filter(Boolean).sort();
+  if (!equipos.length) return;
+  var stats = equipos.map(function(eq) {
+    var dat = todos.filter(function(d){ return d.equipo===eq; });
+    var np = sumHoras(filtrarNP(dat));
+    var pl = sumHoras(filtrarPL(dat));
+    var nSem = new Set(dat.map(function(d){ return d.semana; }).filter(Boolean)).size || 1;
+    var cal = nSem * 168;
+    var denom = cal - pl;
+    var disp = denom > 0 ? Math.max(0, (cal - np - pl) / denom * 100) : 0;
+    return { eq: eq, disp: disp };
+  }).sort(function(a,b){ return b.disp-a.disp; });
+
+  mkChart('chartParetoDisp', {
+    type: 'bar',
+    data: {
+      labels: stats.map(function(s){ return s.eq; }),
+      datasets: [
+        { label: '% Disponibilidad', data: stats.map(function(s){ return s.disp.toFixed(1); }),
+          backgroundColor: stats.map(function(s){ return s.disp>=80?'#16a34a':s.disp>=60?'#d97706':'#dc2626'; }),
+          borderRadius: 4 },
+        { type: 'line', label: 'Meta 80%', data: Array(stats.length).fill(80), borderColor: '#6366f1', borderDash: [5,3], pointRadius: 0, borderWidth: 1.5 },
+        { type: 'line', label: 'Meta 60%', data: Array(stats.length).fill(60), borderColor: '#dc2626', borderDash: [5,3], pointRadius: 0, borderWidth: 1.5 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { maxRotation: 45, font: { size: 10 } } },
+        y: { beginAtZero: false, min: 0, max: 105, ticks: { callback: function(v){ return v+'%'; } } }
+      }
+    }
+  });
+}
+
+// ── RENDER DISPONIBILIDAD ──
+function renderDisponibilidad() {
+  applyDashConfig('disponibilidad');
+  var datos = filtrar();
+  if (!datos.length) { document.getElementById('dispKpis').innerHTML = noDataHtml(); return; }
+
+  // KPIs usando misma función que Dashboard — solo JR para contractual
+  var kpiJR = calcDispContractual(datos, 'JR');
+  var kpiTodos = calcDispContractual(datos, null);
+
+  var semMap = {};
+  datos.forEach(function(d) {
+    var sem = parseInt(d.semana) || 0;
+    if (!semMap[sem]) semMap[sem] = { sem: sem, horasNP: 0, horasPL: 0, equipos: new Set() };
+    semMap[sem].equipos.add(d.equipo);
+    if (d.mantenimiento === 'NP') semMap[sem].horasNP += parseFloat(d.detencion_total_horas)||0;
+    if (d.mantenimiento === 'PL') semMap[sem].horasPL += parseFloat(d.detencion_total_horas)||0;
+  });
+
+  var sems = Object.values(semMap).sort(function(a,b){ return a.sem-b.sem; }).slice(-20);
+  var labels = sems.map(function(s){ return 'S' + s.sem; });
+  var dispPct = sems.map(function(s) {
+    var calSet = new Set(); var npH = 0; var plH = 0;
+    datos.filter(function(d){ return parseInt(d.semana) === s.sem; }).forEach(function(d){
+      if (d.equipo && d.semana) calSet.add(d.equipo);
+      if (d.mantenimiento === 'NP') npH += parseFloat(d.detencion_total_horas)||0;
+      if (d.mantenimiento === 'PL') plH += parseFloat(d.detencion_total_horas)||0;
+    });
+    var cal = calSet.size * 168;
+    var denom = cal - plH;
+    return denom > 0 ? Math.max(0, (cal - npH - plH) / denom * 100) : 0;
+  });
+
+  document.getElementById('dispKpis').innerHTML =
+    kpiCard('DISP. CONTRACTUAL JR', kpiJR.disp.toFixed(1) + '%', 'igual fórmula que Dashboard', dispColor(kpiJR.disp), '') +
+    kpiCard('INDISPONIBILIDAD JR', (100 - kpiJR.disp).toFixed(1) + '%', '', '#dc2626', '') +
+    kpiCard('HORAS NP', kpiTodos.horasNP.toFixed(1), 'no programadas en período', '#dc2626', '') +
+    kpiCard('HORAS PL', kpiTodos.horasPL.toFixed(1), 'planificadas en período', '#d97706', '');
+
+  mkChart('chartDispSemana', {
+    type: 'line',
+    data: { labels: labels, datasets: [
+      { label: '% Disponibilidad', data: dispPct.map(function(v){ return v.toFixed(1); }), borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,.1)', fill: true, tension: 0.3, pointRadius: 4 },
+      { label: 'Meta 80%', data: Array(labels.length).fill(80), borderColor: '#dc2626', borderDash: [5,3], pointRadius: 0, borderWidth: 1.5 }
+    ]},
+    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, scales: { y: { min: 0, max: 105, ticks: { callback: function(v){ return v+'%'; } } } } }
+  });
+
+  mkChart('chartHorasSemana', {
+    type: 'bar',
+    data: { labels: labels, datasets: [
+      { label: 'Horas NP', data: sems.map(function(s){ return s.horasNP.toFixed(1); }), backgroundColor: '#ef4444', borderRadius: 3, stack: 'horas' },
+      { label: 'Horas PL', data: sems.map(function(s){ return s.horasPL.toFixed(1); }), backgroundColor: '#f59e0b', borderRadius: 3, stack: 'horas' }
+    ]},
+    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, scales: { x: { stacked: true, ticks: { font: { size: 10 } } }, y: { stacked: true, beginAtZero: true } } }
+  });
+}
+
+// ── RENDER DETENCIONES ──
+function renderDetenciones() {
+  applyDashConfig('detenciones');
+  var datos = filtrar();
+  if (!datos.length) { document.getElementById('detKpis').innerHTML = noDataHtml(); return; }
+
+  var horasNP = sumHoras(filtrarNP(datos));
+  var horasPL = sumHoras(filtrarPL(datos));
+
+  document.getElementById('detKpis').innerHTML =
+    kpiCard('Total Registros', datos.length, 'detenciones filtradas', '#6366f1', '') +
+    kpiCard('Horas NP', horasNP.toFixed(1), 'no programadas', '#dc2626', '') +
+    kpiCard('Horas PL', horasPL.toFixed(1), 'planificadas', '#d97706', '') +
+    kpiCard('Total Horas', (horasNP+horasPL).toFixed(1), 'NP + PL', '#E8571A', '');
+
+  var subMap = {};
+  filtrarNP(datos).forEach(function(d){ var s=(d.subsistemas||'Sin clasificar').trim(); subMap[s]=(subMap[s]||0)+(parseFloat(d.detencion_total_horas)||0); });
+  var top10sub = Object.entries(subMap).sort(function(a,b){ return b[1]-a[1]; }).slice(0,10);
+  mkChart('chartDetSubsistema', { type: 'bar', data: { labels: top10sub.map(function(e){ return e[0]; }), datasets: [{ label:'Horas NP', data:top10sub.map(function(e){ return e[1].toFixed(1); }), backgroundColor:'#ef4444', borderRadius:3 }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { maxRotation: 45, font: { size: 9 } } }, y: { beginAtZero: true } } } });
+
+  var eqMap = {};
+  datos.forEach(function(d){ eqMap[d.equipo]=(eqMap[d.equipo]||0)+(parseFloat(d.detencion_total_horas)||0); });
+  var topEq = Object.entries(eqMap).sort(function(a,b){ return b[1]-a[1]; }).slice(0,15);
+  mkChart('chartDetEquipo', { type: 'bar', data: { labels: topEq.map(function(e){ return e[0]; }), datasets: [{ label:'Horas', data:topEq.map(function(e){ return e[1].toFixed(1); }), backgroundColor:'#6366f1', borderRadius:3 }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { maxRotation: 45, font: { size: 10 } } }, y: { beginAtZero: true } } } });
+
+  var sorted = datos.slice().sort(function(a,b){ return new Date(b.fecha_inicio||0)-new Date(a.fecha_inicio||0); }).slice(0,30);
+  document.getElementById('tablaDetenciones').innerHTML = sorted.map(function(d) {
+    var isManual = (d.responsable === 'MANUAL');
+    var rowStyle = isManual ? ' style="background:#fef3c7"' : '';
+    return '<tr' + rowStyle + '><td><strong>' + (d.equipo||'—') + '</strong></td><td>' + (d.fecha_inicio ? new Date(d.fecha_inicio).toLocaleDateString() : '—') + '</td><td>' + (d.semana||'—') + '</td><td>' + (d.turno||'—') + '</td><td>' + (d.mantenimiento||'—') + '</td><td>' + (d.subsistemas||'—') + '</td><td style="font-weight:700">' + (parseFloat(d.detencion_total_horas)||0).toFixed(1) + '</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (d.tipo_de_perdida||'') + '">' + (d.tipo_de_perdida||'—').substring(0,50) + (isManual ? ' [M]' : '') + '</td></tr>';
+  }).join('');
+
+  // Grilla semanal por turno — solo si hay equipo específico seleccionado
+  renderGrillaTurno(datos);
+}
+
+// ── RENDER SISTEMAS ──
+function renderSistemas() {
+  applyDashConfig('sistemas');
+  var datos = filtrarNP(filtrar());
+  if (!datos.length) { document.getElementById('sistKpis').innerHTML = noDataHtml('Sin datos NP con los filtros actuales'); return; }
+
+  var subMap = {};
+  datos.forEach(function(d) {
+    var s = (d.subsistemas||'Sin clasificar').trim();
+    if (!subMap[s]) subMap[s] = { nombre: s, fallas: 0, horas: 0, equipos: new Set(), comps: new Set() };
+    subMap[s].fallas++;
+    subMap[s].horas += parseFloat(d.detencion_total_horas)||0;
+    if (d.equipo) subMap[s].equipos.add(d.equipo);
+    if (d.componente && d.componente.trim()) subMap[s].comps.add(d.componente.trim());
+  });
+
+  var lista = Object.values(subMap).sort(function(a,b){ return b.horas-a.horas; });
+  var totalH = lista.reduce(function(s,x){ return s+x.horas; }, 0);
+  var totalF = lista.reduce(function(s,x){ return s+x.fallas; }, 0);
+
+  document.getElementById('sistKpis').innerHTML =
+    kpiCard('Subsistemas NP', lista.length, 'con fallas', '#6366f1', '') +
+    kpiCard('Total Horas NP', totalH.toFixed(1), 'horas acumuladas', '#dc2626', '') +
+    kpiCard('Total Fallas', totalF, 'eventos NP', '#E8571A', '') +
+    kpiCard('Más Crítico', (lista[0]?.nombre||'—').substring(0,15), (lista[0]?.horas||0).toFixed(1) + ' h', '#dc2626', '');
+
+  var top10 = lista.slice(0,10);
+  mkChart('chartSistHoras', { type: 'bar', data: { labels: top10.map(function(s){ return s.nombre; }), datasets: [{ label:'Horas NP', data:top10.map(function(s){ return s.horas.toFixed(1); }), backgroundColor:'#ef4444', borderRadius:3 }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { maxRotation: 45, font: { size: 9 } } }, y: { beginAtZero: true } } } });
+  mkChart('chartSistPie', { type: 'doughnut', data: { labels: top10.map(function(s){ return s.nombre; }), datasets: [{ data: top10.map(function(s){ return s.horas.toFixed(1); }), backgroundColor: ['#ef4444','#f59e0b','#3b82f6','#10b981','#8b5cf6','#06b6d4','#f97316','#84cc16','#ec4899','#64748b'] }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } } });
+
+  document.getElementById('tablaSistemas').innerHTML = lista.map(function(s) {
+    var pct = totalH > 0 ? (s.horas/totalH*100).toFixed(1) : '0';
+    var color = parseFloat(pct) > 20 ? '#dc2626' : parseFloat(pct) > 10 ? '#d97706' : '#16a34a';
+    return '<tr><td><strong>' + s.nombre + '</strong></td><td style="text-align:center">' + s.fallas + '</td>' +
+      '<td style="color:#dc2626;font-weight:700;text-align:center">' + s.horas.toFixed(1) + ' h</td>' +
+      '<td><span style="font-weight:700;color:' + color + '">' + pct + '%</span></td>' +
+      '<td style="font-size:11px">' + Array.from(s.equipos).slice(0,5).join(', ') + '</td>' +
+      '<td style="font-size:11px;max-width:200px">' + Array.from(s.comps).slice(0,3).join(', ') + '</td></tr>';
+  }).join('');
+}
+
+// ── RENDER EQUIPOS ──
+function renderEquipos() {
+  applyDashConfig('equipos');
+  var datos = filtrar();
+  if (!datos.length) { document.getElementById('tablaEquipos').innerHTML = noDataHtml(); return; }
+
+  var eqMap = {};
+  datos.forEach(function(d) {
+    var eq = d.equipo || '?';
+    if (!eqMap[eq]) eqMap[eq] = { eq: eq, tipo: tipoEquipo(eq), count: 0, horasNP: 0, horasPL: 0 };
+    eqMap[eq].count++;
+    if (d.mantenimiento === 'NP') eqMap[eq].horasNP += parseFloat(d.detencion_total_horas)||0;
+    if (d.mantenimiento === 'PL') eqMap[eq].horasPL += parseFloat(d.detencion_total_horas)||0;
+  });
+
+  var lista = Object.values(eqMap).sort(function(a,b){ return b.horasNP-a.horasNP; });
+  mkChart('chartEqPareto', { type: 'bar', data: { labels: lista.map(function(e){ return e.eq; }), datasets: [{ label:'Horas NP', data:lista.map(function(e){ return e.horasNP.toFixed(1); }), backgroundColor:'#ef4444', borderRadius:3 }, { label:'Horas PL', data:lista.map(function(e){ return e.horasPL.toFixed(1); }), backgroundColor:'#f59e0b', borderRadius:3 }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, scales: { x: { ticks: { maxRotation: 45, font: { size: 10 } } }, y: { beginAtZero: true } } } });
+
+  document.getElementById('tablaEquipos').innerHTML = lista.map(function(e) {
+    var total = e.horasNP + e.horasPL;
+    var estado = e.horasNP > 100 ? '<span class="badge-red">Crítico</span>' : e.horasNP > 50 ? '<span class="badge-yellow">Alerta</span>' : '<span class="badge-green">Normal</span>';
+    return '<tr><td><strong>' + e.eq + '</strong></td><td>' + e.tipo + '</td><td style="text-align:center">' + e.count + '</td>' +
+      '<td style="color:#dc2626;font-weight:700;text-align:center">' + e.horasNP.toFixed(1) + '</td>' +
+      '<td style="color:#d97706;text-align:center">' + e.horasPL.toFixed(1) + '</td>' +
+      '<td style="text-align:center">' + total.toFixed(1) + '</td>' +
+      '<td>' + estado + '</td></tr>';
+  }).join('');
+}
+
+// ── ROUTING ──
+function showTab(t) {
+  document.querySelectorAll('.tab-content').forEach(function(e){ e.classList.remove('active'); });
+  document.querySelectorAll('[data-tab]').forEach(function(e){ e.classList.remove('active'); });
+  document.getElementById('tab-' + t).classList.add('active');
+  document.querySelectorAll('[data-tab="' + t + '"]').forEach(function(e){ e.classList.add('active'); });
+  renderTab(t);
+}
+
+function renderTab(t) {
+  if (t === 'ejecutivo') renderEjecutivo();
+  else if (t === 'dashboard') renderDashboard();
+  else if (t === 'disponibilidad') renderDisponibilidad();
+  else if (t === 'detenciones') renderDetenciones();
+  else if (t === 'sistemas') renderSistemas();
+  else if (t === 'equipos') renderEquipos();
+  else if (t === 'bd') cargarStatusBD();
+  else if (t === 'usuarios') { renderUsuarios(); if (SESSION && SESSION.rol === 'admin') loadDefaults(); }
+  else if (t === 'powerbi') { if (!PBI_DATA) cargarPowerBI(); else renderPBI(); }
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+  document.querySelector('.page').classList.toggle('collapsed');
+  document.getElementById('sbToggle').classList.toggle('collapsed');
+}
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', function() {
+  if (TOKEN && SESSION) {
+    postLogin();
+  } else {
+    document.getElementById('loginOverlay').style.display = 'flex';
+  }
+});
+
+// ── GRILLA SEMANAL POR TURNO ──
+function renderGrillaTurno(datos) {
+  var f = getFiltros();
+  var card = document.getElementById('cardGrillaTurno');
+  // Solo mostrar si hay 1 equipo específico seleccionado
+  if (f.equiposEsp.length !== 1) { card.style.display = 'none'; return; }
+  var equipo = f.equiposEsp[0];
+  var eqDatos = datos.filter(function(d){ return d.equipo === equipo; });
+  if (!eqDatos.length) { card.style.display = 'none'; return; }
+
+  card.style.display = 'block';
+  var nombresDia = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+  // Agrupar por semana
+  var porSemana = {};
+  eqDatos.forEach(function(d) {
+    var sem = parseInt(d.semana) || 0;
+    if (!porSemana[sem]) porSemana[sem] = [];
+    porSemana[sem].push(d);
+  });
+
+  var semanas = Object.keys(porSemana).map(Number).sort(function(a,b){ return b-a; });
+  var html = '';
+  var isAdmin = SESSION && SESSION.rol === 'admin';
+
+  semanas.forEach(function(sem) {
+    var rows = porSemana[sem];
+    // Obtener fechas de esa semana
+    var fechas = {};
+    rows.forEach(function(d) {
+      if (!d.fecha_inicio) return;
+      var fStr = d.fecha_inicio.slice(0, 10);
+      if (!fechas[fStr]) fechas[fStr] = { A: [], B: [] };
+      var turno = (d.turno || '').toUpperCase();
+      if (turno === 'A' || turno === 'B') fechas[fStr][turno].push(d);
+    });
+
+    // Generar 7 días de la semana (lun-dom) basado en las fechas existentes
+    var fechaKeys = Object.keys(fechas).sort();
+    if (!fechaKeys.length) return;
+    // Encontrar lunes de esa semana
+    var primerFecha = fechaKeys[0].split('-');
+    var dt = new Date(parseInt(primerFecha[0]), parseInt(primerFecha[1])-1, parseInt(primerFecha[2]));
+    var dow = dt.getDay(); // 0=dom
+    var lunes = new Date(dt); lunes.setDate(dt.getDate() - ((dow + 6) % 7));
+
+    html += '<tr><td colspan="3" style="background:#1a1a2e;color:#fff;font-weight:800;padding:8px;text-align:center">Semana ' + sem + '</td></tr>';
+
+    for (var i = 0; i < 7; i++) {
+      var dia = new Date(lunes); dia.setDate(lunes.getDate() + i);
+      var diaStr = dia.getFullYear() + '-' + String(dia.getMonth()+1).padStart(2,'0') + '-' + String(dia.getDate()).padStart(2,'0');
+      var diaLabel = nombresDia[dia.getDay()] + ' ' + dia.getDate();
+      var turnoA = '', turnoB = '';
+
+      if (fechas[diaStr]) {
+        turnoA = formatTurnoCelda(fechas[diaStr].A);
+        turnoB = formatTurnoCelda(fechas[diaStr].B);
+      }
+
+      // Celdas vacías: botón para agregar (solo admin)
+      var btnA = '', btnB = '';
+      if (!turnoA && isAdmin) btnA = '<button class="btn-ia" style="font-size:10px;padding:2px 8px" onclick="modalDetencionManual(\'' + equipo + '\',\'' + diaStr + '\',\'A\',' + sem + ')">+ Agregar</button>';
+      if (!turnoB && isAdmin) btnB = '<button class="btn-ia" style="font-size:10px;padding:2px 8px" onclick="modalDetencionManual(\'' + equipo + '\',\'' + diaStr + '\',\'B\',' + sem + ')">+ Agregar</button>';
+
+      var cellA = turnoA || btnA || '<span style="color:#9ca3af">—</span>';
+      var cellB = turnoB || btnB || '<span style="color:#9ca3af">—</span>';
+
+      html += '<tr><td style="font-weight:700;white-space:nowrap">' + diaLabel + '</td><td>' + cellA + '</td><td>' + cellB + '</td></tr>';
+    }
+  });
+
+  document.getElementById('grillaTurnoTitle').textContent = 'Grilla Semanal por Turno — ' + equipo;
+  document.getElementById('tblGrillaTurno').innerHTML = html;
+}
+
+function formatTurnoCelda(registros) {
+  if (!registros || !registros.length) return '';
+  var isAdmin = SESSION && SESSION.rol === 'admin';
+  return registros.map(function(d) {
+    var h = parseFloat(d.detencion_total_horas) || 0;
+    var tipo = d.mantenimiento || '?';
+    var color = tipo === 'NP' ? '#dc2626' : '#d97706';
+    var sub = (d.subsistemas || '').substring(0, 25);
+    var isManual = d.responsable === 'MANUAL';
+    var cls = isAdmin && d.id ? ' class="det-edit"' : '';
+    var click = isAdmin && d.id ? ' onclick="abrirEditarDetencion(' + d.id + ')"' : '';
+    return '<div' + cls + ' style="margin:2px 0;padding:2px 4px;cursor:' + (isAdmin && d.id ? 'pointer' : 'default') + '" title="' + (isAdmin ? 'Click para editar' : '') + '"' + click + '><span style="color:' + color + ';font-weight:700">' + tipo + ' </span><span style="font-weight:700;color:' + color + '">' + h + 'h</span> <span style="font-size:10px;color:var(--text2)">' + sub + '</span>' + (isManual ? ' <span style="font-size:9px;color:#6366f1;font-weight:700">[M]</span>' : '') + '</div>';
+  }).join('');
+}
+
+function abrirEditarDetencion(id) {
+  fetch('/api/detencion/' + id, {
+    headers: { 'Authorization': 'Bearer ' + TOKEN }
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d) {
+    if (d.error) { alert(d.error); return; }
+    _manualCtx = { id: d.id, equipo: d.equipo, fecha: d.fecha_inicio, turno: d.turno, semana: d.semana };
+    document.getElementById('mmInfo').textContent = d.equipo + ' — ' + d.fecha_inicio + ' — Turno ' + d.turno + ' (Semana ' + d.semana + ') — ID:' + d.id;
+    document.getElementById('mmTipo').value = d.mantenimiento || 'NP';
+    document.getElementById('mmHoras').value = d.detencion_total_horas || 0;
+    document.getElementById('mmHoraInicio').value = d.hora_inicio || '';
+    document.getElementById('mmHoraTermino').value = d.hora_termino || '';
+    document.getElementById('mmContDia').value = d.detencion_continua_dia || 'NO';
+    document.getElementById('mmContMes').value = d.detencion_continua_mes || 'NO';
+    document.getElementById('mmTipoOT').value = d.tipo_ot || '';
+    document.getElementById('mmDM').value = d.dm || '';
+    document.getElementById('mmSistema').value = (d.sistemas || '').replace(/ /g, '_');
+    actualizarSubsistemas();
+    setTimeout(function() {
+      document.getElementById('mmSubsistema').value = (d.subsistemas || '').replace(/ /g, '_');
+      actualizarComponentes();
+      setTimeout(function() {
+        document.getElementById('mmComponente').value = d.componente || '';
+      }, 50);
+    }, 50);
+    document.getElementById('mmTipoPerdida').value = d.tipo_de_perdida || '';
+    document.getElementById('mmEvento').value = d.evento || '';
+    document.getElementById('mmEjecucion').value = '';
+    document.getElementById('btnGuardarModal').textContent = 'Actualizar Registro';
+    document.getElementById('modalManual').classList.add('open');
+  })
+  .catch(function(e){ alert('Error: ' + e.message); });
+}
+
+var _manualCtx = {};
+
+function modalDetencionManual(equipo, fecha, turno, semana) {
+  _manualCtx = { id: null, equipo: equipo, fecha: fecha, turno: turno, semana: semana };
+  document.getElementById('btnGuardarModal').textContent = 'Guardar Registro';
+  document.getElementById('mmInfo').textContent = equipo + ' — ' + fecha + ' — Turno ' + turno + ' (Semana ' + semana + ')';
+  document.getElementById('mmTipo').value = 'NP';
+  document.getElementById('mmHoras').value = '12';
+  document.getElementById('mmHoraInicio').value = turno === 'A' ? '07:00' : '19:00';
+  document.getElementById('mmHoraTermino').value = turno === 'A' ? '19:00' : '07:00';
+  document.getElementById('mmContDia').value = 'SI';
+  document.getElementById('mmContMes').value = 'NO';
+  document.getElementById('mmTipoOT').value = 'INTERFERENCIA';
+  document.getElementById('mmDM').value = '';
+  document.getElementById('mmSistema').value = '';
+  actualizarSubsistemas();
+  document.getElementById('mmTipoPerdida').value = 'INTERFERENCIA';
+  document.getElementById('mmEvento').value = '';
+  document.getElementById('mmEjecucion').value = '';
+  document.getElementById('modalManual').classList.add('open');
+}
+
+function cerrarModalManual() {
+  document.getElementById('modalManual').classList.remove('open');
+}
+
+function enviarDetencionManual() {
+  var c = _manualCtx;
+  var body = {
+    mantenimiento: document.getElementById('mmTipo').value,
+    detencion_total_horas: parseFloat(document.getElementById('mmHoras').value) || 12,
+    sistemas: (document.getElementById('mmSistema').value || '').replace(/_/g, ' '),
+    subsistemas: (document.getElementById('mmSubsistema').value || 'SIN INTERVENCIÓN').replace(/_/g, ' '),
+    componente: document.getElementById('mmComponente').value || null,
+    tipo_de_perdida: document.getElementById('mmTipoPerdida').value,
+    evento: document.getElementById('mmEvento').value || 'Equipo fuera de servicio sin intervención',
+    hora_inicio: document.getElementById('mmHoraInicio').value || null,
+    hora_termino: document.getElementById('mmHoraTermino').value || null,
+    detencion_continua_dia: document.getElementById('mmContDia').value,
+    detencion_continua_mes: document.getElementById('mmContMes').value,
+    tipo_ot: document.getElementById('mmTipoOT').value || null,
+    dm: document.getElementById('mmDM').value || null
+  };
+
+  var isEdit = !!c.id;
+  var url = isEdit ? '/api/detencion/' + c.id : '/api/detencion-manual';
+  var method = isEdit ? 'PATCH' : 'POST';
+
+  if (!isEdit) {
+    body.equipo = c.equipo;
+    body.fecha_inicio = c.fecha;
+    body.semana = c.semana;
+    body.turno = c.turno;
+    body.ejecucion = document.getElementById('mmEjecucion').value || 'Sin intervención';
+  }
+
+  fetch(url, {
+    method: method,
+    headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    if (data.ok) {
+      cerrarModalManual();
+      alert(isEdit ? 'Registro actualizado' : 'Registro agregado');
+      cargarDatos();
+    } else {
+      alert('Error: ' + (data.error || 'desconocido'));
+    }
+  })
+  .catch(function(e){ alert('Error: ' + e.message); });
+}
+
+// ── ANÁLISIS IA (Groq/Qwen) ──
+async function llamarIA(prompt) {
+  var resp = await fetch('/api/analisis-ia', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: prompt })
+  });
+  var data = await resp.json();
+  if (!resp.ok) throw new Error(data.error || 'Error IA');
+  return data.texto;
+}
+
+async function analizarEquipoCritico() {
+  var btn = document.getElementById('btnAnalisisCritico');
+  var box = document.getElementById('iaEquipoCritico');
+  btn.disabled = true; btn.textContent = 'Analizando...';
+  box.style.display = 'block'; box.className = 'ia-box loading'; box.textContent = 'Consultando IA...';
+  try {
+    var todos = filtrar();
+    var np = filtrarNP(todos);
+    var porEq = {};
+    np.forEach(function(d){ porEq[d.equipo] = (porEq[d.equipo]||0) + (parseFloat(d.detencion_total_horas)||0); });
+    var eqCrit = Object.keys(porEq).sort(function(a,b){ return porEq[b]-porEq[a]; })[0];
+    if (!eqCrit) { box.textContent = 'Sin datos de equipo crítico'; box.className = 'ia-box'; btn.disabled = false; btn.textContent = 'Analizar con IA'; return; }
+    var eventos = np.filter(function(d){ return d.equipo === eqCrit; }).slice(0, 30);
+    var detalle = eventos.map(function(d){
+      return 'Fecha:' + (d.fecha_inicio||'?') + ' | Sistema:' + (d.sistemas||'?') + ' | Subsistema:' + (d.subsistemas||'?') + ' | Componente:' + (d.componente||'?') + ' | Horas:' + (d.detencion_total_horas||0) + ' | Evento:' + (d.evento||'Sin descripción');
+    }).join('\n');
+    var prompt = 'Equipo más crítico: ' + eqCrit + ' con ' + porEq[eqCrit].toFixed(1) + ' horas NP totales.\n\nDetenciones NP (últimas ' + eventos.length + '):\n' + detalle + '\n\nResume: qué sistemas/componentes fallaron, qué eventos ocurrieron y qué se ejecutó en cada intervención. Solo resumen, sin recomendaciones.';
+    var texto = await llamarIA(prompt);
+    box.className = 'ia-box'; box.textContent = texto;
+  } catch(e) {
+    box.className = 'ia-box error'; box.textContent = 'Error: ' + e.message;
+  }
+  btn.disabled = false; btn.textContent = 'Analizar con IA';
+}
+
+async function analizarFlotaJR() {
+  var btn = document.getElementById('btnResumenFlota');
+  var container = document.getElementById('iaFlotaJR');
+  btn.disabled = true; btn.textContent = 'Analizando flota...';
+  container.style.display = 'block';
+  var todos = filtrar();
+  var np = filtrarNP(todos);
+  var equipos = ['JR001','JR002','JR003','JR004','JR005','JR006','JR007','JR008','JR009','JR010'];
+  container.innerHTML = equipos.map(function(eq) {
+    return '<div class="ia-box loading" id="iaFlota_' + eq + '" style="margin-bottom:8px"><strong>' + eq + '</strong> — Consultando IA...</div>';
+  }).join('');
+  for (var i = 0; i < equipos.length; i++) {
+    var eq = equipos[i];
+    var evs = np.filter(function(d){ return d.equipo === eq; });
+    var box = document.getElementById('iaFlota_' + eq);
+    if (!evs.length) { box.className = 'ia-box'; box.innerHTML = '<strong>' + eq + '</strong> — Sin fallas NP en el período'; continue; }
+    var hrsNP = evs.reduce(function(s,d){ return s + (parseFloat(d.detencion_total_horas)||0); }, 0);
+    var detalle = evs.slice(0, 10).map(function(d){
+      return d.fecha_inicio + '|' + (d.subsistemas||'?') + '|' + (d.componente||'?') + '|' + (d.detencion_total_horas||0) + 'h|' + ((d.evento||'').substring(0,80));
+    }).join('\n');
+    var prompt = eq + ': ' + evs.length + ' fallas NP, ' + hrsNP.toFixed(1) + 'h.\n' + detalle + '\nResume en 2 líneas: qué falló y qué se hizo.';
+    btn.textContent = 'Analizando ' + eq + ' (' + (i+1) + '/' + equipos.length + ')...';
+    try {
+      var texto = await llamarIA(prompt);
+      box.className = 'ia-box'; box.innerHTML = '<strong>' + eq + '</strong> (' + evs.length + ' fallas, ' + hrsNP.toFixed(1) + 'h NP)<br>' + texto;
+    } catch(e) {
+      box.className = 'ia-box error'; box.innerHTML = '<strong>' + eq + '</strong> — Error: ' + e.message;
+    }
+    if (i < equipos.length - 1) await new Promise(function(r){ setTimeout(r, 15000); });
+  }
+  btn.disabled = false; btn.textContent = 'Analizar Flota con IA';
+}
+
+async function analizarRepetitivaFila(idx, btn) {
+  var item = window._repetitivasData[idx];
+  if (!item) return;
+  var parts = item[0].split('||');
+  var equipo = parts[0], componente = parts[1], count = item[1];
+  var divIA = document.getElementById('iaRep' + idx);
+  btn.disabled = true; btn.textContent = 'Analizando...';
+  divIA.style.display = 'block'; divIA.innerHTML = '<span style="color:#6b7280;font-style:italic">Consultando IA...</span>';
+  try {
+    var todos = filtrar();
+    var np = filtrarNP(todos);
+    var eventos = np.filter(function(d){ return d.equipo === equipo && (d.componente||'Sin componente').trim() === componente; }).slice(0, 20);
+    var detalle = eventos.map(function(d){
+      return 'Fecha:' + (d.fecha_inicio||'?') + ' | Sistema:' + (d.sistemas||'?') + ' | Subsistema:' + (d.subsistemas||'?') + ' | Horas:' + (d.detencion_total_horas||0) + ' | Evento:' + (d.evento||'Sin descripción');
+    }).join('\n');
+    var prompt = 'Falla repetitiva: Equipo ' + equipo + ', Componente "' + componente + '", ' + count + ' ocurrencias.\n\nEventos:\n' + detalle + '\n\nResume: qué ocurrió en cada evento, qué se ejecutó en las intervenciones y si el problema fue el mismo o diferente cada vez. Solo resumen, sin recomendaciones.';
+    var texto = await llamarIA(prompt);
+    divIA.innerHTML = '<div class="ia-box" style="margin:0">' + texto + '</div>';
+  } catch(e) {
+    divIA.innerHTML = '<div class="ia-box error" style="margin:0">Error: ' + e.message + '</div>';
+  }
+  btn.disabled = false; btn.textContent = 'Analizar';
+}
+
+async function analizarRepetitivas() {
+  var btn = document.getElementById('btnAnalisisRepetitivas');
+  var box = document.getElementById('iaRepetitivas');
+  if (!window._repetitivasData || !window._repetitivasData.length) return;
+  btn.disabled = true; btn.textContent = 'Analizando...';
+  box.style.display = 'block'; box.className = 'ia-box loading'; box.textContent = 'Consultando IA...';
+  try {
+    var todos = filtrar();
+    var np = filtrarNP(todos);
+    var resumen = window._repetitivasData.slice(0, 10).map(function(item){
+      var parts = item[0].split('||');
+      var equipo = parts[0], comp = parts[1], count = item[1];
+      var evts = np.filter(function(d){ return d.equipo === equipo && (d.componente||'Sin componente').trim() === comp; });
+      var descripciones = evts.slice(0, 5).map(function(d){ return (d.evento||'Sin desc').substring(0, 100); }).join('; ');
+      return equipo + ' | ' + comp + ' | ' + count + 'x | Eventos: ' + descripciones;
+    }).join('\n');
+    var prompt = 'Resumen de fallas repetitivas (≥2 ocurrencias mismo equipo+componente) en flota minera:\n\n' + resumen + '\n\nNota: "componente" es la categorización más cercana del sistema, no siempre el componente exacto que falló.\n\nResume: qué ocurrió en cada caso, qué se ejecutó y si las fallas fueron por la misma causa o distintas. Solo resumen de hechos, sin recomendaciones.';
+    var texto = await llamarIA(prompt);
+    box.className = 'ia-box'; box.textContent = texto;
+  } catch(e) {
+    box.className = 'ia-box error'; box.textContent = 'Error: ' + e.message;
+  }
+  btn.disabled = false; btn.textContent = 'Analizar todas con IA';
+}
+</script>
+
+<!-- Modal Detención Manual -->
+<div id="modalManual">
+  <div class="modal-body">
+    <div class="modal-header">
+      <span>Registrar Detención Manual</span>
+      <button class="btn-icon" onclick="cerrarModalManual()">✕</button>
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px" id="mmInfo"></div>
+    <div class="row2">
+      <div><label>Tipo</label><select id="mmTipo"><option value="NP">NP (No Programado)</option><option value="PL">PL (Planificado)</option></select></div>
+      <div><label>Horas Detención</label><input id="mmHoras" type="number" value="12" min="0" max="12" step="0.5"/></div>
+    </div>
+    <div class="row2">
+      <div><label>Hora Inicio</label><input id="mmHoraInicio" type="time" value="19:00"/></div>
+      <div><label>Hora Término</label><input id="mmHoraTermino" type="time" value="07:00"/></div>
+    </div>
+    <div class="row2">
+      <div><label>Detención Continua (Día)</label><select id="mmContDia"><option value="NO">NO</option><option value="SI">SI</option></select></div>
+      <div><label>Detención Continua (Mes)</label><select id="mmContMes"><option value="NO">NO</option><option value="SI">SI</option></select></div>
+    </div>
+    <div class="row2">
+      <div><label>Tipo OT</label><select id="mmTipoOT"><option value="">— Opcional —</option><option value="FALLA MECANICA">FALLA MECANICA</option><option value="FALLA ELECTRICA">FALLA ELECTRICA</option><option value="INTERFERENCIA">INTERFERENCIA</option><option value="PLANIFICADA">PLANIFICADA</option></select></div>
+      <div><label>DM (Código equipo)</label><input id="mmDM" type="text" placeholder="Ej: DL421"/></div>
+    </div>
+    <label>Sistema</label>
+    <select id="mmSistema" onchange="actualizarSubsistemas()"><option value="">— Seleccionar —</option></select>
+    <label>Subsistema</label>
+    <select id="mmSubsistema" onchange="actualizarComponentes()"><option value="">— Seleccionar sistema primero —</option></select>
+    <label>Componente</label>
+    <select id="mmComponente"><option value="">— Opcional —</option></select>
+    <label>Tipo de Pérdida</label>
+    <select id="mmTipoPerdida">
+      <option value="INTERFERENCIA">INTERFERENCIA</option>
+      <option value="FALTA DE REPUESTO">FALTA DE REPUESTO</option>
+      <option value="INTERFERENCIA OPERACIONAL">INTERFERENCIA OPERACIONAL</option>
+      <option value="INTERFERENCIA MANTENIMIENTO">INTERFERENCIA MANTENIMIENTO</option>
+      <option value="EN ESPERA LOGISTICA">EN ESPERA LOGISTICA</option>
+      <option value="FALLA PRODUCTO">FALLA PRODUCTO</option>
+      <option value="NP MECANICA">NP MECANICA</option>
+      <option value="NP ELECTRICA">NP ELECTRICA</option>
+      <option value="EQAC">EQAC</option>
+      <option value="OPERACIONAL">OPERACIONAL</option>
+      <option value="PLANIFICADO">PLANIFICADO</option>
+    </select>
+    <label>Aviso / Diagnóstico</label>
+    <textarea id="mmEvento" placeholder="Ej: Equipo fuera de servicio esperando cilindro de avance perforadora..." style="min-height:40px"></textarea>
+    <label>Ejecución (qué se hizo)</label>
+    <textarea id="mmEjecucion" placeholder="Ej: Sin intervención, equipo a la espera de repuesto..." style="min-height:40px"></textarea>
+    <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn-icon" onclick="cerrarModalManual()">Cancelar</button>
+      <button class="btn-ia" style="padding:8px 20px;font-size:13px" id="btnGuardarModal" onclick="enviarDetencionManual()">Guardar Registro</button>
+    </div>
+  </div>
+</div>
+<script>
+var JERARQUIA_JR={"MOTOR_DIESEL":{"ADMISION_Y_ESCAPE":["ABRAZADERAS","COLECTOR DE ADMISION","COLECTOR DE ESCAPE","DUCTOS DE ADMISION","DUCTOS DE ESCAPE","FILTRO DE AIRE","INTERCOOLER","MANGUITOS"],"COMBUSTIBLE":["BOMBA CEBADORA","CONECTORES","DUCTOS","ESTANQUE COMBUSTIBLE","FILTRO","FLEXIBLES","INYECTORES","PORTA FILTRO","REGULADOR DE PRESION","SENSOR DE NIVEL","SENSOR DE PRESION","SUCCION","VALVULA DE PASO"],"ELECTRICO_MOTOR":["ALTERNADOR","ARNES","BATERIA","BORNES","CORTA CORRIENTE","DISYUNTOR_JR","ECM","FUSIBLE","MOTOR DE PARTIDA","SENSORES"],"ENFRIAMIENTO_MOTOR":["BOMBA DE AGUA","BOMBA DE VENTILADOR","DEPOSITO DE EXPANSION","DUCTOS DE ENFRIAMIENTO","MOTOR DE VENTILADOR","RADIADOR","REFRIGERANTE","SENSOR DE TEMPERATURA","TERMOSTATO","VENTILADOR"],"LUBRICACION_MOTOR":["ACEITE MOTOR","BOMBA DE ACEITE","CARTER","DUCTOS DE LUBRICACION","FILTRO","PORTA FILTRO","SELLOS","TAPA DE VALVULAS","VALVULA DE ALIVIO","VARILLA DE NIVEL"],"ACCIONAMIENTO_MOTOR":["CORREAS","POLEAS","PROTECCIONES","SOPORTES","TENSORES","VALVULAS"],"TURBO_COMPRESOR":["ABRAZADERAS","ALABES","CAMBIO TURBO","CARCAZA","EJE","EMPAQUETADURA","VALVULA WASTERGATE"]},"TREN_DE_POTENCIA":{"TRANSMISION":["BOBINA","BOMBA TRANSMISION","CAMBIO TRANSMISION","FILTROS","FLEXIBLES","LINEA_CARDANICA","NIVEL DE ACEITE","PIÑONES DE ATAQUE","PORTA FILTRO","REJILLAS MAGNETICAS","SELLOS","SENSOR DE VELOCIDAD","SOPORTES","VALVULA_DE_ALIVIO","VALVULA_MODULADORA"],"CONVERTIDOR":["CAMBIO COMVERTIDOR","FLEX PLATE","FLEXIBLES","SELLOS","SENSOR DE VELOCIDAD","SOPORTES","V/V ENTRADA","V/V SALIDA"],"DIFERENCIALES":["BOMBA ENFRIAMIENTO EJES","CAMBIO DIFERENCIAL DELANTERO","CAMBIO DIFERENCIAL TRASERO","CAÑERIAS","FILTRO ENFRIAMIENTO EJES","FLEXIBLES","GOLILLAS","PERNOS","RESPIRADERO","SELLOS","TAPON"],"LINEAS_CARDANICAS":["CARDAN CENTRAL","CARDAN DELANTERO","CARDAN TRASERO","CRUZETA","PILOW BLOCK","YOKE DELANTERO","YOKE TRASERO"],"MANDOS_FINALES":["CAMBIO MANDO FINAL P1","CAMBIO MANDO FINAL P2","CAMBIO MANDO FINAL P3","CAMBIO MANDO FINAL P4","CORONA","PLANETARIO","SELLOS","SOLARES"],"TRANSMISION_HIDROESTATICA":[]},"HIDRAULICO":{"SUMINISTRO_HIDRAULICO":["BLOCK","BOMBA","CAÑERIAS","ESTANQUE","FILTROS","FLEXIBLES","ORBITROL","RESPIRADERO","SENSOR DE TEMPERATURA","VALVULAS"],"CILINDRO_DIRECCION":["BUJES","CAMBIO CILINDRO DIRECCION DER","CAMBIO CILINDRO DIRECCION IZQ","CAÑERIAS","COJINETES","FLEXIBLES","GOLILLAS","PASADORES","PERNOS","RETENES","ROTULA","SELLOS","VASTAGO"]},"DIRECCION":{"DIRECCION_ASISTIDA":["BOMBA DE DIRECCION","DUCTOS","FLEXIBLES","GOLILLAS","PERNOS","SELLOS","VALVULA DE ALIVIO"],"DIRECCION_DE_EMERGENCIA":["BOMBA DE DIRECCION","FLEXIBLES","LINEAS ELECTRICAS","PULSADOR"]},"FRENOS":{"ELECTRICO_FRENOS":["ACTUADORES","FRENO_PARQUEO","LINEAS ELECTRICAS","SENSORES"],"SUMINISTRO_FRENOS":["ACEITE FRENOS","ACUMULADORES","BOMBA","ESTANQUE","FILTRO","FLEXIBLES","PORTA FILTRO","VALVULAS"],"FRENOS_DE_EMERGENCIA":["BOMBA DE FRENO","FLEXIBLES","LINEAS ELECTRICAS","PULSADOR FRENO PARQUEO"],"FRENO_DE_SERVICIO":["ACTUADORES","PEDAL","VALVULA DE FRENO"]},"CHASIS_ESTRUCTURA":{"CABINA":["APOYA_BRAZO","ASIENTO","BOTONERAS","CHAPA","CONTROLES","ESPEJO","JOYSTICK","LIMPIAPARABRISAS","PARABRISAS","PUERTA","VENTANA"],"CAMARAS":["BASE","ESTRUCTURA","LINEAS ELECTRICAS","PROTECCIONES"],"PROTECCIONES":["BONBIN GAS","CUBIERTAS","GOLILLAS","PARACHOQUES","PERNOS","PLANCHAS","PROTECCIONES","SELLOS","SOPORTES"],"ARTICULACION_CENTRAL":["JUNTA","LAINAS","PASADOR INFERIOR","PASADOR SUPERIOR","PERNOS","RETENES","SELLOS"],"ILUMINACION":["AMPOLLETAS","BALIZA","CONECTORES","ESTRUCTURA","FOCOS","FUSIBLES","LINEAS ELECTRICAS","SOPORTES"],"ELECTRICO_ESTRUCTURA":["SENSORES","LINEAS ELECTRICAS"]},"LUBRICACION":{"ENGRASE":["ACOPLES","BOMBA","ESTANQUE","FLEXIBLES","INYECTOR","LINEAS","PORTA FILTRO","PROTECCIONES","SENSOR DE NIVEL"],"ELECTRICO_LUBRICACION":["CONECTORES","FUSIBLES","LINEAS ELECTRICAS","SENSORES"]},"AIRE_ACONDICIONADO":{"ENFRIAMIENTO":["BLOWER","CAJON","COMPRESOR","CONDENSADOR","DUCTOS","EVAPORADOR","FILTRO","GAS REFRIGERANTE","VALVULAS"],"CALEFACCION":["RADIADOR","TERMOSTATO","VALVULA DE CONTROL","VENTILADOR"],"ELECTRICO_AC":["FUSIBLES","LINEAS ELECTRICAS","PRESOSTATO","SENSORES"]},"SUPRESION_DE_INCENDIO":{"ESTRUCTURA_SDI":["ACTUADOR","ANSUL","BASE","BATERIA","CABLES","CILINDROS","DIFUSORES","ETIQUETAS","MANOMETROS","PULSADORES","SENSORES","TOBERAS"]},"PERFORACION":{"AVANCE_PERFORADORA":["ALMUADILLAS DESLIZANTES","BALANCIN","BUJES","CILINDRO AVANCE PERFORADORA","DESLIZADERAS","FLEXIBLES","GUIAS","MESA","MOTOR","PATINES","PROTECCIONES","VIGA"],"CENTRALIZADOR_DE_BARRA":["ACUMULADOR","BRAZO FIJO","BRAZO MOVIL","BUJES","CAMBIO CENTRALIZADOR DE BARRA","CILINDRO","FLEXIBLES","MORDAZA","PERNOS","PROTECCIONES"],"MAGAZINE":["BRAZO TOMA BARRA","BUJES","CILINDRO MANIPULADOR BARRAS","CIRCUITO MANIPULADOR BARRAS","CRUZ DE MALTA","ESTRUCTURAS","FLEXIBLES","MOTOR","PLATO","PORTA BARRAS","PROTECCIONES","SENSORES"],"PERFORADORA":["ACUMULADORES","ANCLAJE","ANCLAJES","BOMBA HIDRAULICA","BUJES","CABEZA ROTACION","CAMBIO PERFORADORA","CHUCK","COPLA","FLEXIBLES","MANGUERA DE BARRIDO","MOTOR DE ROTACION","PERNOS","PROTECCIONES","SHANK ADAPTER","VALVULAS"],"BARRIDO":["ACOPLES","BOMBA DE AGUA","CARRETE DE AGUA","COMPRESOR","FILTROS","FLEXIBLES","VALVULAS"],"AVANCE_VIGA":["ALMUADILLAS DESLIZANTES","BISAGRA SOPORTE BRAZO","BISAGRA SOPORTE CILINDRO BRAZO","BRAZO","BUJES","CILINDRO AVANCE VIGA","CILINDRO BASCULACION","CILINDRO TELESCOPICO","FLEXIBLES","GUIAS","PROTECCIONES"],"POSICIONAMIENTO":["ACOPLAMIENTO","ANCLAJE","BOMBA HIDRAULICA","BUJES","BUJES BRONCE","CILINDRO","ESTRUCTURAS","FLEXIBLES","MOTOR","PERNOS","PROTECCIONES","SENSORES","VALVULAS"],"PERCUSION":["ACOPLAMIENTO","CARCAZA","DEFLECTOR DE DETRITUS","CALIBRACION"]},"ELECTRICO":{"SISTEMA_DE_GENERACION_Y_DISTRIBUCION":["Alternador principal","Regulador de voltaje","Baterías","Interruptor general"],"SISTEMA_DE_ARRANQUE":["Motor de arranque","Solenoide de arranque","Relé de arranque","Interruptor de encendido"],"SISTEMA_DE_ILUMINACION":["Faros delanteros","Faros traseros","Luces de trabajo","Luces estroboscópicas","Luz de cabina"],"SISTEMA_DE_INSTRUMENTACION":["Panel de instrumentos","Medidor de presión","Medidor de temperatura","Indicador de nivel"],"SISTEMA_DE_CONTROL_ELECTROHIDRAULICO":["Válvulas solenoides","Controladores electrónicos","Joysticks","Sensores de posición"],"SISTEMA_DE_PERFORACION":["Motores eléctricos de rotación","Sensores de profundidad","Sensores de ángulo","Panel de control perforación"],"SISTEMA_DE_SEGURIDAD":["Parada de emergencia","Interruptores de seguridad","Alarmas","Bocinas","Sensores de proximidad"],"SISTEMA_ELECTRICO_380V_24V":["Cable alimentación externa","Plug enchufe industrial","Transformador","Rectificador","Breaker principal"],"CONEXIONES_Y_ARNESES":["Arnés principal","Arnés motor","Arnés cabina","Arnés chasis"],"SISTEMA_DE_TIERRA_Y_PROTECCION":["Puntos de tierra","Protección contra sobretensión","Fusibles","Supresores"]},"MANTENCION_PROGRAMADA":{"PAUTA_DIARIA":["MECANICA","ELECTRICA"],"MANTENCION_MAYOR":["MECANICA","ELECTRICA"],"PAUTA_SEMANAL_TERRENO":["MECANICA","ELECTRICA"],"PAUTA_SEMANAL_TALLER":["MECANICA","ELECTRICA"],"PL_250":["MECANICA","ELECTRICA"],"PL_500":["MECANICA","ELECTRICA"],"PL_1000":["MECANICA","ELECTRICA"],"PL_2000":["MECANICA","ELECTRICA"],"PL_3000":["MECANICA","ELECTRICA"],"PL_4000":["MECANICA","ELECTRICA"],"PL_6000":["MECANICA","ELECTRICA"],"EXTENSION_MANTENCION":["MECANICA","ELECTRICA"],"PAUTA_MENSUAL":["MECANICA","ELECTRICA"],"PAUTA_TRIMESTRAL":["MECANICA","ELECTRICA"],"PAUTA_SEMESTRAL":["MECANICA","ELECTRICA"],"PAUTA_ANUAL":["MECANICA","ELECTRICA"]},"NEUMATICOS":{"MEDICION_DE_RODADO":["RODADO","FALLA_MECANICA"],"CAMBIO_NEUMATICO":["RODADO","FALLA_ELECTRICA"],"CHEQUEO_PRESIONES":["RODADO","PLANIFICADA"]}};
+
+// Opciones adicionales que no son del Excel pero se usan en registro manual
+JERARQUIA_JR["INTERFERENCIA_OPERACIONAL"]={"SIN_INTERVENCION":[],"ESPERA_REPUESTO":[],"ESPERA_LOGISTICA":[],"STAND_BY":[]};
+
+(function(){
+  var sel = document.getElementById('mmSistema');
+  sel.innerHTML = '<option value="">— Seleccionar —</option>';
+  Object.keys(JERARQUIA_JR).sort().forEach(function(s){
+    var label = s.replace(/_/g, ' ');
+    sel.innerHTML += '<option value="' + s + '">' + label + '</option>';
+  });
+})();
+
+function actualizarSubsistemas() {
+  var sist = document.getElementById('mmSistema').value;
+  var sel = document.getElementById('mmSubsistema');
+  var selComp = document.getElementById('mmComponente');
+  sel.innerHTML = '<option value="">— Seleccionar —</option>';
+  selComp.innerHTML = '<option value="">— Opcional —</option>';
+  if (!sist || !JERARQUIA_JR[sist]) return;
+  Object.keys(JERARQUIA_JR[sist]).sort().forEach(function(sub){
+    var label = sub.replace(/_/g, ' ');
+    sel.innerHTML += '<option value="' + sub + '">' + label + '</option>';
+  });
+}
+
+function actualizarComponentes() {
+  var sist = document.getElementById('mmSistema').value;
+  var sub = document.getElementById('mmSubsistema').value;
+  var sel = document.getElementById('mmComponente');
+  sel.innerHTML = '<option value="">— Opcional —</option>';
+  if (!sist || !sub || !JERARQUIA_JR[sist] || !JERARQUIA_JR[sist][sub]) return;
+  JERARQUIA_JR[sist][sub].forEach(function(comp){
+    sel.innerHTML += '<option value="' + comp + '">' + comp + '</option>';
+  });
+}
+</script>
+</body>
+</html>

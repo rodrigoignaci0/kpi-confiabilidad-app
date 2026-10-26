@@ -1,0 +1,28 @@
+var MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+var KPI = [
+  {id:1,nombre:'Cumplimiento plan de mantenimiento',freq:'Semanal',meta:90,pond:20,
+   numL:'N° actividades realizadas (OT cerrada)',denL:'N° actividades planificadas',
+   fuente:'SAP / Programa de Mantenimiento',
+   rangos:'N1:<85% · N3:85–90% · N5:≥90%',nota:function(v){return v>=90?5:v>=85?3:1}},
+  {id:2,nombre:'Cumplimiento dotacional',freq:'Mensual',meta:95,pond:10,
+   numL:'N° personas contratadas y disponibles',denL:'N° personal necesario',
+   fuente:'Disponibilidad de personal según necesidades operativas',
+   rangos:'N1:<90% · N3:90–95% · N5:≥95%',nota:function(v){return v>=95?5:v>=90?3:1}},
+  {id:3,nombre:'Plan de traslado y logística',freq:'Semanal',meta:95,pond:20,
+   numL:'N° traslados realizados según plan',denL:'N° traslados planificados',
+   fuente:'Plan de traslados mensual',
+   rangos:'N1:<90% · N3:90–95% · N5:≥95%',nota:function(v){return v>=95?5:v>=90?3:1}},
+  {id:4,nombre:'Gestión de rotación del personal',freq:'Mensual',meta:15,pond:10,
+   numL:'N° desvinculaciones',denL:'Dotación promedio del periodo',
+   fuente:'Tasa anual. Menor es mejor.',
+   rangos:'N1:≥20% · N3:15–20% · N5:≤15%',invertido:true,nota:function(v){return v<=15?5:v<20?3:1}},
+  {id:5,nombre:'Disponibilidad por flota',freq:'Mensual',meta:80,pond:20,
+   numL:'Horas disponibles (contractual)',denL:'Horas totales del periodo',
+   fuente:'Disponibilidad contractual conciliada con AdC',
+   rangos:'N1:<75% · N3:75–80% · N5:≥80%',nota:function(v){return v>=80?5:v>=75?3:1}},
+  {id:6,nombre:'Cumplimiento ciclo SOMA',freq:'Mensual',meta:85,pond:20,
+   numL:'N° actividades realizadas según planificado',denL:'N° actividades planificadas',
+   fuente:'Medición contractual conciliada con AdC',
+   rangos:'N1:<80% · N3:80–85% · N5:≥85%',nota:function(v){return v>=85?5:v>=80?3:1}},
+];

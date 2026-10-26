@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Control Turno a Turno</title>
+<style>
+:root{--bg:#f8fafc;--surface:#fff;--surface2:#f1f5f9;--border:#e2e8f0;--text:#0f172a;--text2:#64748b;--primary:#0f766e;--primary-light:#ccfbf1;--red:#dc2626;--red-bg:#fef2f2;--orange:#ea580c;--orange-bg:#fff7ed;--yellow:#ca8a04;--yellow-bg:#fefce8;--green:#16a34a;--green-bg:#f0fdf4;--navy:#1e293b;--font:-apple-system,system-ui,sans-serif}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f172a;--surface:#1e293b;--surface2:#334155;--border:#475569;--text:#f1f5f9;--text2:#94a3b8;--primary:#2dd4bf;--primary-light:#134e4a;--red-bg:#450a0a;--orange-bg:#431407;--yellow-bg:#422006;--green-bg:#052e16;--navy:#f1f5f9}}
+:root[data-theme="dark"]{--bg:#0f172a;--surface:#1e293b;--surface2:#334155;--border:#475569;--text:#f1f5f9;--text2:#94a3b8;--primary:#2dd4bf;--primary-light:#134e4a;--red-bg:#450a0a;--orange-bg:#431407;--yellow-bg:#422006;--green-bg:#052e16;--navy:#f1f5f9}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.5}
+.container{max-width:1280px;margin:0 auto;padding:16px}
+header{background:var(--navy);color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+header h1{font-size:18px;font-weight:700}
+header select{padding:6px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;font-size:13px}
+header select option{color:#000}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:16px 0}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
+.card .label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:4px}
+.card .value{font-size:28px;font-weight:700}
+.card.alta .value{color:var(--red)}
+.card.media .value{color:var(--orange)}
+.card.baja .value{color:var(--yellow)}
+.card.ok .value{color:var(--green)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
+@media(max-width:768px){.grid2{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
+.panel h3{font-size:14px;font-weight:600;margin-bottom:12px;color:var(--primary)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--surface2);padding:8px;text-align:left;font-weight:600;border-bottom:2px solid var(--border);position:sticky;top:0}
+td{padding:6px 8px;border-bottom:1px solid var(--border)}
+tr:hover td{background:var(--surface2)}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.badge.alta{background:var(--red-bg);color:var(--red)}
+.badge.media{background:var(--orange-bg);color:var(--orange)}
+.badge.baja{background:var(--yellow-bg);color:var(--yellow)}
+.badge.pendiente{background:var(--surface2);color:var(--text2)}
+.badge.corregido{background:var(--green-bg);color:var(--green)}
+.badge.ignorado{background:var(--surface2);color:var(--text2);text-decoration:line-through}
+.btn{padding:4px 10px;border:none;border-radius:4px;font-size:11px;cursor:pointer;font-weight:600}
+.btn-fix{background:var(--primary);color:#fff}
+.btn-fix:hover{opacity:.8}
+.btn-skip{background:var(--surface2);color:var(--text2)}
+.btn-skip:hover{background:var(--border)}
+.btn-undo{background:transparent;color:var(--text2);text-decoration:underline;font-size:10px}
+.filters{display:flex;gap:8px;margin:16px 0;flex-wrap:wrap;align-items:center}
+.filters select,.filters input{padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--text)}
+.filters label{font-size:12px;color:var(--text2)}
+.empty{text-align:center;padding:40px;color:var(--text2);font-size:14px}
+.bar{height:6px;border-radius:3px;background:var(--surface2);margin-top:6px}
+.bar-fill{height:100%;border-radius:3px;transition:width .3s}
+.tipo-label{font-size:12px;display:flex;justify-content:space-between;margin-bottom:2px}
+.chart-row{margin-bottom:10px}
+.hallazgo-row{cursor:pointer}
+.hallazgo-row.expanded td{border-bottom:none}
+.hallazgo-detail{background:var(--surface2);padding:12px;border-radius:6px;margin:4px 0 8px;font-size:12px;line-height:1.7}
+.hallazgo-detail .field{color:var(--text2);font-size:11px}
+.scroll-table{max-height:500px;overflow-y:auto}
+.trend-bar{display:flex;gap:2px;align-items:end;height:60px}
+.trend-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.trend-col .bar-v{width:100%;border-radius:2px 2px 0 0;min-height:1px}
+.trend-col .label{font-size:9px;color:var(--text2)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Control Turno a Turno</h1>
+  <div style="display:flex;gap:8px;align-items:center">
+    <select id="selSemana" onchange="cargarSemana()"></select>
+    <span id="rangoFechas" style="font-size:12px;opacity:.7"></span>
+  </div>
+</header>
+
+<div class="container">
+  <div id="noData" class="empty" style="display:none">
+    No hay datos. Ejecuta: <code>python control_semanal.py --semana 43</code>
+  </div>
+
+  <div id="content" style="display:none">
+    <!-- KPI Cards -->
+    <div class="cards">
+      <div class="card"><div class="label">Total Registros</div><div class="value" id="totalReg">0</div></div>
+      <div class="card alta"><div class="label">Prioridad Alta</div><div class="value" id="totalAlta">0</div></div>
+      <div class="card media"><div class="label">Prioridad Media</div><div class="value" id="totalMedia">0</div></div>
+      <div class="card baja"><div class="label">Prioridad Baja</div><div class="value" id="totalBaja">0</div></div>
+      <div class="card ok"><div class="label">Sin Alertas</div><div class="value" id="totalOk">0</div></div>
+    </div>
+
+    <!-- Charts row -->
+    <div class="grid2">
+      <div class="panel">
+        <h3>Hallazgos por Tipo</h3>
+        <div id="chartTipo"></div>
+      </div>
+      <div class="panel">
+        <h3>Hallazgos por Equipo (Top 10)</h3>
+        <div id="chartEquipo"></div>
+      </div>
+    </div>
+
+    <!-- Tendencia -->
+    <div class="panel" style="margin:16px 0">
+      <h3>Tendencia Semanal</h3>
+      <div id="chartTendencia" class="trend-bar"></div>
+    </div>
+
+    <!-- Supervisores -->
+    <div class="grid2">
+      <div class="panel">
+        <h3>Por Supervisor</h3>
+        <div class="scroll-table">
+          <table><thead><tr><th>Supervisor</th><th>Bloques</th><th>Alertas</th></tr></thead>
+          <tbody id="tblSupervisores"></tbody></table>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Equipos</h3>
+        <div class="scroll-table">
+          <table><thead><tr><th>Equipo</th><th>Bloques</th><th>Fallas</th><th>Sistemas</th></tr></thead>
+          <tbody id="tblEquipos"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hallazgos table -->
+    <div class="panel" style="margin:16px 0">
+      <h3>Hallazgos</h3>
+      <div class="filters">
+        <label>Tipo:</label>
+        <select id="filtroTipo" onchange="renderHallazgos()"><option value="">Todos</option></select>
+        <label>Equipo:</label>
+        <select id="filtroEquipo" onchange="renderHallazgos()"><option value="">Todos</option></select>
+        <label>Prioridad:</label>
+        <select id="filtroPrioridad" onchange="renderHallazgos()">
+          <option value="">Todas</option><option value="alta">Alta</option><option value="media">Media</option><option value="baja">Baja</option>
+        </select>
+        <label>Estado:</label>
+        <select id="filtroEstado" onchange="renderHallazgos()">
+          <option value="">Todos</option><option value="pendiente">Pendiente</option><option value="corregido">Corregido</option><option value="ignorado">Ignorado</option>
+        </select>
+      </div>
+      <div class="scroll-table" style="max-height:600px">
+        <table>
+          <thead><tr><th>Equipo</th><th>Turno</th><th>Tipo</th><th>Prioridad</th><th>Detalle</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="tblHallazgos"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var DATA = null;
+var HALLAZGOS = [];
+var SEMANAS = [];
+
+async function init() {
+  try {
+    var resp = await fetch('/api/semanas');
+    SEMANAS = await resp.json();
+  } catch(e) { SEMANAS = []; }
+
+  var sel = document.getElementById('selSemana');
+  if (!SEMANAS.length) {
+    document.getElementById('noData').style.display = 'block';
+    return;
+  }
+  SEMANAS.forEach(function(s) {
+    var o = document.createElement('option');
+    o.value = s.semana + '|' + s.year;
+    o.textContent = 'S' + s.semana + ' ' + s.year + ' (' + s.fecha_inicio + ' al ' + s.fecha_fin + ')';
+    sel.appendChild(o);
+  });
+  cargarSemana();
+}
+
+async function cargarSemana() {
+  var val = document.getElementById('selSemana').value;
+  if (!val) return;
+  var parts = val.split('|');
+  var semana = parseInt(parts[0]), year = parseInt(parts[1]);
+
+  var resp = await fetch('/api/semana/' + semana + '?year=' + year);
+  DATA = await resp.json();
+  HALLAZGOS = DATA.hallazgos;
+
+  var resp2 = await fetch('/api/tendencia?year=' + year);
+  var tendencia = await resp2.json();
+
+  var resp3 = await fetch('/api/equipos?semana=' + semana + '&year=' + year);
+  var equipos = await resp3.json();
+
+  document.getElementById('content').style.display = 'block';
+  document.getElementById('noData').style.display = 'none';
+  document.getElementById('rangoFechas').textContent = DATA.semana.fecha_inicio + ' al ' + DATA.semana.fecha_fin;
+
+  // KPIs
+  document.getElementById('totalReg').textContent = DATA.semana.total_registros;
+  document.getElementById('totalAlta').textContent = DATA.semana.alta;
+  document.getElementById('totalMedia').textContent = DATA.semana.media;
+  document.getElementById('totalBaja').textContent = DATA.semana.baja;
+  document.getElementById('totalOk').textContent = DATA.semana.total_registros - DATA.semana.total_hallazgos;
+
+  renderBarChart('chartTipo', DATA.por_tipo.map(function(r){return{label:tipoLabel(r.tipo),value:r.n}}), var_primary());
+  renderBarChart('chartEquipo', DATA.por_equipo.slice(0,10).map(function(r){return{label:r.equipo,value:r.n}}), '#ea580c');
+
+  // Supervisores
+  var tbody = document.getElementById('tblSupervisores');
+  tbody.innerHTML = '';
+  DATA.por_supervisor.forEach(function(s) {
+    tbody.innerHTML += '<tr><td>' + (s.supervisor||'—') + '</td><td>' + s.bloques + '</td><td>' + s.alertas + '</td></tr>';
+  });
+
+  // Equipos
+  tbody = document.getElementById('tblEquipos');
+  tbody.innerHTML = '';
+  equipos.forEach(function(e) {
+    tbody.innerHTML += '<tr><td><strong>' + e.equipo + '</strong></td><td>' + e.bloques + '</td><td>' + e.fallas + '</td><td style="font-size:11px">' + (e.sistemas||'') + '</td></tr>';
+  });
+
+  // Tendencia
+  renderTendencia(tendencia);
+
+  // Filtros
+  var tipos = [...new Set(HALLAZGOS.map(function(h){return h.tipo}))];
+  var eqs = [...new Set(HALLAZGOS.map(function(h){return h.equipo}))].sort();
+  var selT = document.getElementById('filtroTipo');
+  selT.innerHTML = '<option value="">Todos</option>';
+  tipos.forEach(function(t){ selT.innerHTML += '<option value="'+t+'">'+tipoLabel(t)+'</option>'; });
+  var selE = document.getElementById('filtroEquipo');
+  selE.innerHTML = '<option value="">Todos</option>';
+  eqs.forEach(function(e){ selE.innerHTML += '<option value="'+e+'">'+e+'</option>'; });
+
+  renderHallazgos();
+}
+
+function tipoLabel(t) {
+  var map = {
+    'falla_formato':'Falla formato','personas_invalido':'Personas inválido',
+    'catalogo_incompleto':'Catálogo incompleto','catalogo_subsistema':'Subsistema inválido',
+    'catalogo_componente':'Componente inválido','preventiva_falla':'Preventiva con falla',
+    'equipo_espacio':'Equipo con espacio',
+    'continuidad_hueco':'Hueco entre turnos','continuidad_clasificacion':'Clasificación inconsistente',
+    'continuidad':'Continuidad falla','ot_desc_inconsistente':'OT vs Descripción','horario':'Fuera de horario',
+    'registro_basura':'Registro basura','registro_basura_parcial':'Basura parcial',
+    'registro_incompleto':'Registro incompleto','campo_hora_basura':'Hora en campo texto',
+    'typo_subsistema':'Typo subsistema','horas_excedidas':'Horas > 168h'
+  };
+  return map[t] || t;
+}
+
+function var_primary() {
+  return getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#0f766e';
+}
+
+function renderBarChart(id, data, color) {
+  var el = document.getElementById(id);
+  if (!data.length) { el.innerHTML = '<div class="empty">Sin datos</div>'; return; }
+  var max = Math.max(...data.map(function(d){return d.value}));
+  el.innerHTML = '';
+  data.forEach(function(d) {
+    var pct = max > 0 ? (d.value / max * 100) : 0;
+    el.innerHTML += '<div class="chart-row"><div class="tipo-label"><span>' + d.label + '</span><span><strong>' + d.value + '</strong></span></div><div class="bar"><div class="bar-fill" style="width:' + pct + '%;background:' + color + '"></div></div></div>';
+  });
+}
+
+function renderTendencia(data) {
+  var el = document.getElementById('chartTendencia');
+  if (!data.length) { el.innerHTML = '<div class="empty">Sin datos</div>'; return; }
+  var max = Math.max(...data.map(function(d){return d.total_hallazgos || 1}));
+  el.innerHTML = '';
+  data.forEach(function(d) {
+    var hAlta = max > 0 ? (d.alta / max * 50) : 0;
+    var hMedia = max > 0 ? (d.media / max * 50) : 0;
+    var hBaja = max > 0 ? (d.baja / max * 50) : 0;
+    el.innerHTML += '<div class="trend-col"><div class="bar-v" style="height:'+hBaja+'px;background:var(--yellow)"></div><div class="bar-v" style="height:'+hMedia+'px;background:var(--orange)"></div><div class="bar-v" style="height:'+hAlta+'px;background:var(--red)"></div><div class="label">S'+d.semana+'</div></div>';
+  });
+}
+
+function renderHallazgos() {
+  var tipo = document.getElementById('filtroTipo').value;
+  var equipo = document.getElementById('filtroEquipo').value;
+  var prioridad = document.getElementById('filtroPrioridad').value;
+  var estado = document.getElementById('filtroEstado').value;
+
+  var filtered = HALLAZGOS.filter(function(h) {
+    if (tipo && h.tipo !== tipo) return false;
+    if (equipo && h.equipo !== equipo) return false;
+    if (prioridad && h.prioridad !== prioridad) return false;
+    if (estado && h.estado !== estado) return false;
+    return true;
+  });
+
+  var tbody = document.getElementById('tblHallazgos');
+  tbody.innerHTML = '';
+
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text2)">Sin hallazgos</td></tr>';
+    return;
+  }
+
+  filtered.forEach(function(h) {
+    var actions = '';
+    if (h.estado === 'pendiente') {
+      if (h.valor_sugerido) {
+        actions += '<button class="btn btn-fix" onclick="corregir('+h.id+')">Corregir</button> ';
+      }
+      actions += '<button class="btn btn-skip" onclick="ignorar('+h.id+')">Ignorar</button>';
+    } else {
+      actions = '<button class="btn btn-undo" onclick="revertir('+h.id+')">Revertir</button>';
+    }
+
+    var sugerido = h.valor_sugerido ? '<br><span class="field">Sugerido: </span><strong>' + esc(h.valor_sugerido) + '</strong>' : '';
+    tbody.innerHTML += '<tr class="hallazgo-row" onclick="toggleDetail(this)">' +
+      '<td><strong>' + esc(h.equipo) + '</strong></td>' +
+      '<td>' + esc(h.turno_tag) + '</td>' +
+      '<td>' + tipoLabel(h.tipo) + '</td>' +
+      '<td><span class="badge ' + h.prioridad + '">' + h.prioridad + '</span></td>' +
+      '<td style="max-width:400px">' + esc(h.detalle) + '</td>' +
+      '<td><span class="badge ' + h.estado + '">' + h.estado + '</span></td>' +
+      '<td>' + actions + '</td></tr>' +
+      '<tr class="hallazgo-expand" style="display:none"><td colspan="7"><div class="hallazgo-detail">' +
+      '<span class="field">Archivo:</span> ' + esc(h.archivo) +
+      '<br><span class="field">Campo:</span> ' + esc(h.campo||'') +
+      '<br><span class="field">Valor actual:</span> ' + esc(h.valor_actual||'') +
+      sugerido +
+      (h.ot ? '<br><span class="field">OT:</span> ' + esc(h.ot) : '') +
+      (h.auto ? '<br><span class="badge corregido">Autocorregible</span>' : '') +
+      '</div></td></tr>';
+  });
+}
+
+function toggleDetail(row) {
+  var next = row.nextElementSibling;
+  if (next && next.classList.contains('hallazgo-expand')) {
+    next.style.display = next.style.display === 'none' ? '' : 'none';
+  }
+}
+
+async function corregir(id) {
+  await fetch('/api/hallazgo/' + id + '/corregir', {method:'POST'});
+  updateHallazgoEstado(id, 'corregido');
+}
+
+async function ignorar(id) {
+  await fetch('/api/hallazgo/' + id + '/ignorar', {method:'POST'});
+  updateHallazgoEstado(id, 'ignorado');
+}
+
+async function revertir(id) {
+  await fetch('/api/hallazgo/' + id + '/revertir', {method:'POST'});
+  updateHallazgoEstado(id, 'pendiente');
+}
+
+function updateHallazgoEstado(id, estado) {
+  HALLAZGOS.forEach(function(h) { if (h.id === id) h.estado = estado; });
+  renderHallazgos();
+}
+
+function esc(s) { return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; }
+
+init();
+</script>
+</body>
+</html>

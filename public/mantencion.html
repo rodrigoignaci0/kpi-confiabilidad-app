@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="refresh" content="120">
+<meta name="robots" content="noindex">
+<title>Sitio en mantención</title>
+<style>
+  :root { --ink: #111515; --ink-2: #5a6366; --accent: #edd530; --bg: #ffffff; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: 48px 24px 40px; text-align: center;
+  }
+  main { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 20px; max-width: 560px; }
+  .bar { width: 56px; height: 6px; background: var(--accent); border-radius: 3px; }
+  h1 { font-size: clamp(26px, 5vw, 38px); line-height: 1.15; margin: 0; letter-spacing: -.01em; }
+  p { margin: 0; font-size: 17px; line-height: 1.55; color: var(--ink-2); }
+  footer img { width: min(240px, 60vw); height: auto; display: block; }
+</style>
+</head>
+<body>
+  <main>
+    <div class="bar" aria-hidden="true"></div>
+    <h1>Sitio en mantención</h1>
+    <p>Estamos realizando mantención y migración de datos del Dashboard KPI de Confiabilidad. El servicio estará disponible nuevamente en breve.</p>
+    <p>Gracias por tu paciencia.</p>
+  </main>
+  <footer>
+    <img src="/assets/logo-veltis.jpg" alt="Veltis">
+  </footer>
+</body>
+</html>

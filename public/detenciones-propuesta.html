@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Detenciones Jumbos Radiales — Propuesta</title>
+<style>
+:root{
+  --bg:#f1f5f9;--surface:#fff;--border:#e2e8f0;
+  --green:#16a34a;--red:#dc2626;--yellow:#f59e0b;--cyan:#06b6d4;--orange:#f97316;
+  --text:#1e293b;--text2:#64748b;--text3:#94a3b8;
+  --radius:12px;--shadow:0 1px 4px rgba(0,0,0,.07),0 2px 12px rgba(0,0,0,.06);
+  font-family:'Segoe UI',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;font-size:14px}
+header{
+  background:#0f172a;color:#fff;padding:0 28px;height:58px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 2px 10px rgba(0,0,0,.3);position:sticky;top:0;z-index:100;
+}
+header h1{font-size:16px;font-weight:700;letter-spacing:.3px}
+header .hright{display:flex;align-items:center;gap:12px}
+.badge-prop{background:#38bdf8;color:#0f172a;font-size:10px;font-weight:800;padding:3px 8px;border-radius:4px;letter-spacing:.8px}
+select#semana{background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:5px 10px;font-size:13px;cursor:pointer;outline:none}
+select#semana:focus{border-color:#38bdf8}
+main{padding:22px 28px;max-width:1400px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+
+/* KPI CARDS */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 20px;display:flex;flex-direction:column;gap:4px}
+.kpi-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2)}
+.kpi-val{font-size:30px;font-weight:800;line-height:1.1}
+.kpi-sub{font-size:11px;color:var(--text3)}
+.kv-green{color:#16a34a}.kv-red{color:#dc2626}.kv-yellow{color:#f59e0b}.kv-cyan{color:#0ea5e9}
+
+/* ROWS */
+.row{display:flex;gap:14px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;flex:1;min-width:0}
+.card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);margin-bottom:2px}
+.card-sub{font-size:11px;color:var(--text3);margin-bottom:10px}
+.col60{flex:0 0 60%}
+.col40{flex:0 0 40%}
+.col50{flex:0 0 50%}
+
+/* LEGEND */
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text2)}
+.leg-sq{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.leg-ln{width:18px;height:2px;flex-shrink:0}
+
+/* NP TABLE */
+.np-table{width:100%;border-collapse:collapse;font-size:12px}
+.np-table th{padding:8px 10px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);border-bottom:2px solid var(--border);background:#f8fafc}
+.np-table td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+.np-table tr:last-child td{border-bottom:none;font-weight:700;background:#f8fafc}
+.sys-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+.be{background:#dbeafe;color:#1e40af}.bp{background:#dcfce7;color:#166534}.bh{background:#fef9c3;color:#713f12}.ba{background:#fce7f3;color:#9d174d}
+.comp-chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;font-size:10px;padding:2px 7px;border-radius:8px}
+.np-tfoot{background:#f8fafc}
+
+svg text{font-family:'Segoe UI',system-ui,sans-serif}
+</style>
+</head>
+<body>
+<header>
+  <h1>Detenciones Jumbos Radiales</h1>
+  <div class="hright">
+    <select id="semana" onchange="render()">
+      <option value="S40">Sem 40</option>
+      <option value="S41">Sem 41</option>
+      <option value="S42">Sem 42</option>
+      <option value="S43" selected>Sem 43</option>
+    </select>
+    <span class="badge-prop">PROPUESTA</span>
+  </div>
+</header>
+<main>
+  <!-- KPI CARDS -->
+  <div class="kpi-row" id="kpiRow"></div>
+  <!-- ROW 1 -->
+  <div class="row">
+    <div class="card col60" id="cardC1">
+      <div class="card-title">Pérdidas por Categoría</div>
+      <div class="card-sub">Barras apiladas % InDisp + líneas tendencia</div>
+      <div id="c1wrap"></div>
+      <div class="legend">
+        <div class="leg-item"><div class="leg-sq" style="background:#06b6d4"></div>Falta Repuesto</div>
+        <div class="leg-item"><div class="leg-sq" style="background:#0f766e"></div>Mant. NP</div>
+        <div class="leg-item"><div class="leg-sq" style="background:#f59e0b"></div>Mant. PL</div>
+        <div class="leg-item"><div class="leg-sq" style="background:#dc2626"></div>EQAC</div>
+        <div class="leg-item"><div class="leg-ln" style="background:#0f766e"></div>% InDisp</div>
+        <div class="leg-item"><div class="leg-ln" style="background:#dc2626"></div>Parque Op.</div>
+      </div>
+    </div>
+    <div class="card col40" id="cardC2">
+      <div class="card-title">Cascada de Pérdidas</div>
+      <div class="card-sub" id="subC2">Waterfall desde 100% disponibilidad</div>
+      <div id="c2wrap" style="overflow-x:auto"></div>
+    </div>
+  </div>
+  <!-- ROW 2 -->
+  <div class="row">
+    <div class="card col50" id="cardC3">
+      <div class="card-title">Jack Knife — Frecuencia vs MTTR</div>
+      <div class="card-sub" id="subC3"></div>
+      <div id="c3wrap"></div>
+      <div class="legend">
+        <div class="leg-item"><div class="leg-sq" style="background:#dc2626;border-radius:50%"></div>Disp &lt; 60%</div>
+        <div class="leg-item"><div class="leg-sq" style="background:#0ea5e9;border-radius:50%"></div>Disp ≥ 60%</div>
+      </div>
+    </div>
+    <div class="card col50" id="cardC4">
+      <div class="card-title">Pareto Disponibilidad por Equipo</div>
+      <div class="card-sub" id="subC4"></div>
+      <div id="c4wrap"></div>
+      <div class="legend">
+        <div class="leg-item"><div class="leg-sq" style="background:#16a34a"></div>≥ 80%</div>
+        <div class="leg-item"><div class="leg-sq" style="background:#f59e0b"></div>60–79%</div>
+        <div class="leg-item"><div class="leg-sq" style="background:#dc2626"></div>&lt; 60%</div>
+        <div class="leg-item"><div class="leg-ln" style="background:#f97316"></div>Pareto Disp.</div>
+      </div>
+    </div>
+  </div>
+  <!-- ROW 3 -->
+  <div class="card">
+    <div class="card-title">NP por Sistema</div>
+    <div class="card-sub">datos Sem 43 (demo)</div>
+    <div id="c5wrap"></div>
+  </div>
+</main>
+
+<script>
+const SEMANAS = [
+  {id:'S40',label:'Sem 40',eqac:8.4,pl:26.1,np:7.7,rep:3.2,parque:5},
+  {id:'S41',label:'Sem 41',eqac:5.8,pl:23.4,np:7.9,rep:16.1,parque:4},
+  {id:'S42',label:'Sem 42',eqac:1.2,pl:38.3,np:10.0,rep:7.8,parque:4},
+  {id:'S43',label:'Sem 43',eqac:3.2,pl:12.0,np:12.5,rep:12.1,parque:6},
+];
+
+const WATERFALL = {
+  S40:[{cat:'Falta Rep.',val:3.2,t:'rep'},{cat:'Mant. PL',val:26.1,t:'pl'},{cat:'Mant. NP',val:7.7,t:'np'},{cat:'EQAC',val:8.4,t:'eqac'}],
+  S41:[{cat:'Falta Rep.',val:16.1,t:'rep'},{cat:'Mant. PL',val:23.4,t:'pl'},{cat:'Mant. NP',val:7.9,t:'np'},{cat:'EQAC',val:5.8,t:'eqac'}],
+  S42:[{cat:'Falta Rep.',val:7.8,t:'rep'},{cat:'Mant. PL',val:38.3,t:'pl'},{cat:'Mant. NP',val:10.0,t:'np'},{cat:'EQAC',val:1.2,t:'eqac'}],
+  S43:[{cat:'Falta Rep.',val:12.1,t:'rep'},{cat:'Mant. PL',val:12.0,t:'pl'},{cat:'Backlog',val:2.0,t:'pl'},{cat:'NP Eléct.',val:5.8,t:'np'},{cat:'NP Perf.',val:3.7,t:'np'},{cat:'NP Hidr.',val:3.0,t:'np'},{cat:'EQAC',val:3.2,t:'eqac'}],
+};
+
+const EQUIPOS = {
+  S40:[{id:'JR001',disp:82,f:3,mttr:28},{id:'JR002',disp:78,f:4,mttr:22},{id:'JR003',disp:55,f:2,mttr:65},{id:'JR004',disp:75,f:3,mttr:20},{id:'JR005',disp:72,f:5,mttr:18},{id:'JR006',disp:48,f:4,mttr:52},{id:'JR007',disp:70,f:2,mttr:30},{id:'JR008',disp:80,f:2,mttr:15},{id:'JR009',disp:66,f:6,mttr:12},{id:'JR010',disp:88,f:1,mttr:10}],
+  S41:[{id:'JR001',disp:85,f:2,mttr:20},{id:'JR002',disp:62,f:6,mttr:28},{id:'JR003',disp:30,f:2,mttr:100},{id:'JR004',disp:68,f:4,mttr:30},{id:'JR005',disp:60,f:5,mttr:35},{id:'JR006',disp:22,f:3,mttr:88},{id:'JR007',disp:74,f:2,mttr:22},{id:'JR008',disp:76,f:3,mttr:18},{id:'JR009',disp:64,f:5,mttr:15},{id:'JR010',disp:82,f:2,mttr:12}],
+  S42:[{id:'JR001',disp:80,f:3,mttr:22},{id:'JR002',disp:58,f:7,mttr:26},{id:'JR003',disp:15,f:2,mttr:130},{id:'JR004',disp:65,f:4,mttr:32},{id:'JR005',disp:55,f:6,mttr:40},{id:'JR006',disp:18,f:3,mttr:92},{id:'JR007',disp:70,f:3,mttr:24},{id:'JR008',disp:72,f:3,mttr:20},{id:'JR009',disp:62,f:5,mttr:18},{id:'JR010',disp:80,f:2,mttr:14}],
+  S43:[{id:'JR001',disp:87,f:2,mttr:8},{id:'JR002',disp:72,f:5,mttr:22},{id:'JR003',disp:0,f:1,mttr:168},{id:'JR004',disp:70,f:3,mttr:28},{id:'JR005',disp:64,f:4,mttr:36},{id:'JR006',disp:7,f:3,mttr:90},{id:'JR007',disp:73,f:2,mttr:25},{id:'JR008',disp:73,f:3,mttr:15},{id:'JR009',disp:69,f:4,mttr:18},{id:'JR010',disp:85,f:1,mttr:12}],
+};
+
+const NP_SIS = [
+  {s:'Eléctrico',indisp:4.5,f:3,hrs:81,badge:'be',comps:['Sensor inclinación JR004/JR009/JR002','Cable alimentación EX','Profundímetro','Sensor R243/S13']},
+  {s:'Perforación',indisp:4.1,f:3,hrs:64,badge:'bp',comps:['Cil. avance perforadora JR009','Mordazas','Acumulador']},
+  {s:'Hidráulico',indisp:2.6,f:13,hrs:47,badge:'bh',comps:['Flexibles JR002/JR005/JR008']},
+  {s:'Aire Acond.',indisp:1.3,f:2,hrs:21,badge:'ba',comps:['Compresor','Ductos']},
+];
+
+const TCOL = {rep:'#06b6d4',pl:'#f59e0b',np:'#0f766e',eqac:'#dc2626'};
+
+function getSemId(){return document.getElementById('semana').value;}
+
+// ── KPI CARDS ──
+function renderKPI(sid){
+  const s = SEMANAS.find(x=>x.id===sid);
+  const eq = EQUIPOS[sid];
+  const indisp = +(s.eqac+s.pl+s.np+s.rep).toFixed(1);
+  const disp = +(100-indisp).toFixed(1);
+  const low = eq.filter(e=>e.disp<60).length;
+  document.getElementById('kpiRow').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">Disponibilidad Flota</div>
+      <div class="kpi-val kv-green">${disp}%</div>
+      <div class="kpi-sub">Promedio ponderado flota</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Indisponibilidad Total</div>
+      <div class="kpi-val kv-red">${indisp}%</div>
+      <div class="kpi-sub">Suma EqAc+PL+NP+Rep</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Parque Operativo</div>
+      <div class="kpi-val kv-cyan">${s.parque}</div>
+      <div class="kpi-sub">Equipos activos en semana</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Equipos &lt; 60%</div>
+      <div class="kpi-val kv-yellow">${low}</div>
+      <div class="kpi-sub">Bajo meta disponibilidad</div>
+    </div>`;
+}
+
+// ── CHART 1 — STACKED + DUAL LINE ──
+function renderC1(){
+  const W=620,H=240,pL=48,pR=58,pT=18,pB=50;
+  const iW=W-pL-pR,iH=H-pT-pB;
+  const n=SEMANAS.length;
+  const bW=iW/n*0.5,gap=iW/n;
+  const maxL=90,maxR=10;
+  const yL=v=>pT+iH*(1-v/maxL);
+  const yR=v=>pT+iH*(1-v/maxR);
+  const xBar=i=>pL+gap*i+gap*0.25;
+  const xMid=i=>pL+gap*i+gap*0.5;
+
+  let bars='',gridL='',gridR='',axL='',axR='',lineIndisp='',linePar='',pts='';
+
+  // grids
+  [0,20,40,60,80].forEach(v=>{
+    const y=yL(v);
+    gridL+=`<line x1="${pL}" y1="${y}" x2="${W-pR}" y2="${y}" stroke="#e2e8f0" stroke-width="1"/>`;
+    axL+=`<text x="${pL-6}" y="${y+4}" text-anchor="end" font-size="9" fill="#94a3b8">${v}</text>`;
+  });
+  [0,2,4,6,8,10].forEach(v=>{
+    axR+=`<text x="${W-pR+6}" y="${yR(v)+4}" text-anchor="start" font-size="9" fill="#94a3b8">${v}</text>`;
+  });
+
+  const indisps=[],parques=[];
+  SEMANAS.forEach((s,i)=>{
+    const x=xBar(i);
+    const total=s.rep+s.np+s.pl+s.eqac;
+    indisps.push({x:xMid(i),y:yL(total),v:total});
+    parques.push({x:xMid(i),y:yR(s.parque),v:s.parque});
+
+    // stacked: bottom-up rep→np→pl→eqac
+    let cur=0;
+    [{v:s.rep,c:'#06b6d4'},{v:s.np,c:'#0f766e'},{v:s.pl,c:'#f59e0b'},{v:s.eqac,c:'#dc2626'}].forEach(seg=>{
+      if(seg.v===0)return;
+      const y1=yL(cur+seg.v);const y2=yL(cur);
+      bars+=`<rect x="${x}" y="${y1}" width="${bW}" height="${y2-y1}" fill="${seg.c}"/>`;
+      cur+=seg.v;
+    });
+    // sem label
+    bars+=`<text x="${xMid(i)}" y="${H-pB+14}" text-anchor="middle" font-size="10" fill="#64748b">${s.label}</text>`;
+  });
+
+  // lines
+  const pts1=indisps.map(p=>`${p.x},${p.y}`).join(' ');
+  const pts2=parques.map(p=>`${p.x},${p.y}`).join(' ');
+  lineIndisp=`<polyline points="${pts1}" fill="none" stroke="#0f766e" stroke-width="2"/>`;
+  linePar=`<polyline points="${pts2}" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="5,3"/>`;
+
+  indisps.forEach(p=>{
+    pts+=`<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="#0f766e"/>`;
+    pts+=`<text x="${p.x}" y="${p.y-6}" text-anchor="middle" font-size="9" fill="#0f766e" font-weight="700">${p.v.toFixed(1)}</text>`;
+  });
+  parques.forEach(p=>{
+    pts+=`<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="#dc2626"/>`;
+    pts+=`<text x="${p.x}" y="${p.y-6}" text-anchor="middle" font-size="9" fill="#dc2626" font-weight="700">${p.v}</text>`;
+  });
+
+  // axis titles
+  const titleL=`<text transform="translate(10,${pT+iH/2}) rotate(-90)" text-anchor="middle" font-size="9" fill="#64748b">% InDisp</text>`;
+  const titleR=`<text transform="translate(${W-10},${pT+iH/2}) rotate(90)" text-anchor="middle" font-size="9" fill="#64748b">N° Jumbos</text>`;
+
+  document.getElementById('c1wrap').innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">
+    ${gridL}${bars}${lineIndisp}${linePar}${pts}${axL}${axR}${titleL}${titleR}
+    <line x1="${pL}" y1="${pT}" x2="${pL}" y2="${pT+iH}" stroke="#cbd5e1" stroke-width="1"/>
+    <line x1="${W-pR}" y1="${pT}" x2="${W-pR}" y2="${pT+iH}" stroke="#cbd5e1" stroke-width="1"/>
+    <line x1="${pL}" y1="${pT+iH}" x2="${W-pR}" y2="${pT+iH}" stroke="#cbd5e1" stroke-width="1"/>
+  </svg>`;
+}
+
+// ── CHART 2 — WATERFALL ──
+function renderC2(sid){
+  const losses=WATERFALL[sid];
+  const bW=42,gap=14,pT=22,pB=44,pH=220;
+  const innerH=pH-pT-pB;
+  const items=[{cat:'Base',val:100,t:'base'},...losses];
+  const totalLoss=losses.reduce((a,b)=>a+b.val,0);
+  const finalDisp=+(100-totalLoss).toFixed(1);
+  items.push({cat:'Disponib.',val:finalDisp,t:'disp'});
+  const n=items.length;
+  const W=n*(bW+gap)+gap+20;
+  const y0=v=>pT+innerH*(1-v/100);
+  const scaleY=v=>innerH*v/100;
+
+  let bars='',labels='',connectors='',cats='';
+  let cur=100;
+
+  items.forEach((it,i)=>{
+    const x=gap+i*(bW+gap);
+    let barY,barH,col;
+    if(it.t==='base'){
+      barY=y0(100);barH=scaleY(100);col='#f97316';
+      labels+=`<text x="${x+bW/2}" y="${barY-4}" text-anchor="middle" font-size="9" fill="#f97316" font-weight="700">100%</text>`;
+    } else if(it.t==='disp'){
+      barY=y0(finalDisp);barH=scaleY(finalDisp);
+      col=finalDisp>=60?'#16a34a':'#dc2626';
+      labels+=`<text x="${x+bW/2}" y="${barY+barH/2+4}" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">${finalDisp}%</text>`;
+    } else {
+      barY=y0(cur);barH=scaleY(it.val);col=TCOL[it.t]||'#94a3b8';
+      labels+=`<text x="${x+bW/2}" y="${barY-4}" text-anchor="middle" font-size="9" fill="${col}" font-weight="700">-${it.val.toFixed(1)}</text>`;
+      // dashed connector to next bar
+      if(i<n-1){
+        const nx=x+bW+gap;
+        connectors+=`<line x1="${x+bW}" y1="${barY+barH}" x2="${nx}" y2="${barY+barH}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3"/>`;
+      }
+      cur-=it.val;
+    }
+    bars+=`<rect x="${x}" y="${barY}" width="${bW}" height="${barH}" fill="${col}" rx="3"/>`;
+    cats+=`<text x="${x+bW/2}" y="${pH-pB+14}" text-anchor="middle" font-size="9" fill="#64748b">${it.cat}</text>`;
+  });
+
+  // baseline
+  const axisY=y0(0);
+  document.getElementById('c2wrap').innerHTML=`<svg viewBox="0 0 ${W} ${pH}" width="${Math.max(W,300)}" height="${pH}" style="display:block">
+    <line x1="0" y1="${axisY}" x2="${W}" y2="${axisY}" stroke="#e2e8f0" stroke-width="1"/>
+    ${connectors}${bars}${labels}${cats}
+  </svg>`;
+}
+
+// ── CHART 3 — JACK KNIFE ──
+function renderC3(sid){
+  const eq=EQUIPOS[sid];
+  const W=380,H=300,pL=52,pR=20,pT=16,pB=44;
+  const iW=W-pL-pR,iH=H-pT-pB;
+
+  const maxF=Math.max(...eq.map(e=>e.f))+1;
+  const maxM=Math.max(...eq.map(e=>e.mttr))+10;
+  const medF=median(eq.map(e=>e.f));
+  const medM=median(eq.map(e=>e.mttr));
+
+  const xS=f=>pL+iW*f/maxF;
+  const yS=m=>pT+iH*m/maxM;
+
+  let grid='',dots='',lbls='';
+  // grid lines
+  for(let v=0;v<=maxF;v+=2){
+    const x=xS(v);
+    grid+=`<line x1="${x}" y1="${pT}" x2="${x}" y2="${pT+iH}" stroke="#f1f5f9" stroke-width="1"/>`;
+    grid+=`<text x="${x}" y="${pT+iH+14}" text-anchor="middle" font-size="9" fill="#94a3b8">${v}</text>`;
+  }
+  for(let v=0;v<=maxM;v+=20){
+    const y=yS(v);
+    grid+=`<line x1="${pL}" y1="${y}" x2="${pL+iW}" y2="${y}" stroke="#f1f5f9" stroke-width="1"/>`;
+    grid+=`<text x="${pL-6}" y="${y+4}" text-anchor="end" font-size="9" fill="#94a3b8">${v}</text>`;
+  }
+
+  // median lines
+  const mfX=xS(medF),mmY=yS(medM);
+  grid+=`<line x1="${mfX}" y1="${pT}" x2="${mfX}" y2="${pT+iH}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="6,4"/>`;
+  grid+=`<line x1="${pL}" y1="${mmY}" x2="${pL+iW}" y2="${mmY}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="6,4"/>`;
+
+  // quadrant labels
+  const ql_x=pL+4,qr_x=mfX+4,qt_y=pT+14,qb_y=pT+iH-4;
+  grid+=`<text x="${ql_x}" y="${qt_y}" font-size="8" fill="#cbd5e1" font-weight="600">AGUDO</text>`;
+  grid+=`<text x="${qr_x}" y="${qt_y}" font-size="8" fill="#cbd5e1" font-weight="600">AGUDO/CRÓNICO</text>`;
+  grid+=`<text x="${ql_x}" y="${qb_y}" font-size="8" fill="#cbd5e1" font-weight="600">NORMAL/LEVE</text>`;
+  grid+=`<text x="${qr_x}" y="${qb_y}" font-size="8" fill="#cbd5e1" font-weight="600">CRÓNICO</text>`;
+
+  eq.forEach(e=>{
+    const cx=xS(e.f),cy=yS(e.mttr);
+    const col=e.disp<60?'#dc2626':'#0ea5e9';
+    dots+=`<circle cx="${cx}" cy="${cy}" r="7" fill="${col}" fill-opacity="0.85" stroke="${col}" stroke-width="1"/>`;
+    lbls+=`<text x="${cx}" y="${cy-10}" text-anchor="middle" font-size="8" fill="#475569" font-weight="600">${e.id}</text>`;
+  });
+
+  // axis titles
+  const axT=`<text transform="translate(12,${pT+iH/2}) rotate(-90)" text-anchor="middle" font-size="9" fill="#64748b">MTTR (hrs)</text>`;
+  const axB=`<text x="${pL+iW/2}" y="${H-4}" text-anchor="middle" font-size="9" fill="#64748b">N° Fallas</text>`;
+
+  document.getElementById('subC3').textContent=`Mediana fallas: ${medF} | Mediana MTTR: ${medM} hrs`;
+  document.getElementById('c3wrap').innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">
+    ${grid}${dots}${lbls}${axT}${axB}
+    <line x1="${pL}" y1="${pT}" x2="${pL}" y2="${pT+iH}" stroke="#cbd5e1"/>
+    <line x1="${pL}" y1="${pT+iH}" x2="${pL+iW}" y2="${pT+iH}" stroke="#cbd5e1"/>
+  </svg>`;
+}
+
+// ── CHART 4 — PARETO DISP ──
+function renderC4(sid){
+  const eq=[...EQUIPOS[sid]].sort((a,b)=>b.disp-a.disp);
+  const W=580,H=220,pL=38,pR=60,pT=20,pB=40;
+  const iW=W-pL-pR,iH=H-pT-pB;
+  const n=eq.length;
+  const bW=iW/n*0.6,gap=iW/n;
+  const yV=v=>pT+iH*(1-v/100);
+  const scH=v=>iH*v/100;
+  const xMid=i=>pL+gap*i+gap*0.5;
+
+  let bars='',grid='',paretoLine='',pts='',labs='',cats='';
+  [0,20,40,60,80,100].forEach(v=>{
+    const y=yV(v);
+    grid+=`<line x1="${pL}" y1="${y}" x2="${W-pR}" y2="${y}" stroke="#e2e8f0" stroke-width="1"/>`;
+    grid+=`<text x="${pL-5}" y="${y+4}" text-anchor="end" font-size="9" fill="#94a3b8">${v}</text>`;
+  });
+
+  // 60% meta line
+  const meta60=yV(60);
+  grid+=`<line x1="${pL}" y1="${meta60}" x2="${W-pR}" y2="${meta60}" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="6,4"/>`;
+  grid+=`<text x="${W-pR+4}" y="${meta60+4}" font-size="9" fill="#f59e0b" font-weight="700">Meta 60%</text>`;
+
+  const paretoPoints=[];
+  eq.forEach((e,i)=>{
+    const x=xMid(i)-bW/2;
+    const col=e.disp>=80?'#16a34a':e.disp>=60?'#f59e0b':'#dc2626';
+    const bH=scH(e.disp);
+    bars+=`<rect x="${x}" y="${yV(e.disp)}" width="${bW}" height="${bH}" fill="${col}" rx="2"/>`;
+    labs+=`<text x="${xMid(i)}" y="${yV(e.disp)-4}" text-anchor="middle" font-size="9" fill="${col}" font-weight="700">${e.disp}%</text>`;
+    cats+=`<text x="${xMid(i)}" y="${H-pB+13}" text-anchor="middle" font-size="9" fill="#64748b">${e.id}</text>`;
+    paretoPoints.push({x:xMid(i),y:yV(e.disp)});
+  });
+
+  paretoLine=`<polyline points="${paretoPoints.map(p=>`${p.x},${p.y}`).join(' ')}" fill="none" stroke="#f97316" stroke-width="2"/>`;
+  paretoPoints.forEach(p=>{
+    pts+=`<circle cx="${p.x}" cy="${p.y}" r="3" fill="#f97316"/>`;
+  });
+
+  document.getElementById('subC4').textContent=`Ordenado DESC por disponibilidad — ${sid}`;
+  document.getElementById('c4wrap').innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">
+    ${grid}${bars}${labs}${paretoLine}${pts}${cats}
+    <line x1="${pL}" y1="${pT}" x2="${pL}" y2="${pT+iH}" stroke="#cbd5e1"/>
+    <line x1="${pL}" y1="${pT+iH}" x2="${W-pR}" y2="${pT+iH}" stroke="#cbd5e1"/>
+  </svg>`;
+}
+
+// ── CHART 5 — NP TABLE ──
+function renderC5(){
+  const totI=NP_SIS.reduce((a,b)=>a+b.indisp,0).toFixed(1);
+  const totF=NP_SIS.reduce((a,b)=>a+b.f,0);
+  const totH=NP_SIS.reduce((a,b)=>a+b.hrs,0);
+  const rows=NP_SIS.map(r=>`
+    <tr>
+      <td><span class="sys-badge ${r.badge}">${r.s}</span></td>
+      <td style="font-weight:700;color:#dc2626">${r.indisp}%</td>
+      <td>${r.f}</td>
+      <td>${r.hrs} hrs</td>
+      <td><div class="comp-chips">${r.comps.map(c=>`<span class="chip">${c}</span>`).join('')}</div></td>
+    </tr>`).join('');
+  document.getElementById('c5wrap').innerHTML=`
+    <table class="np-table">
+      <thead><tr><th>Sistema</th><th>% InDisp NP</th><th>Fallas</th><th>Hrs Det.</th><th>Componentes Afectados</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr class="np-tfoot">
+        <td><strong>TOTAL NP</strong></td>
+        <td style="font-weight:800;color:#dc2626">${totI}%</td>
+        <td><strong>${totF}</strong></td>
+        <td><strong>${totH} hrs</strong></td>
+        <td></td>
+      </tr></tfoot>
+    </table>`;
+}
+
+// helper
+function median(arr){
+  const s=[...arr].sort((a,b)=>a-b);
+  const m=Math.floor(s.length/2);
+  return s.length%2?s[m]:+((s[m-1]+s[m])/2).toFixed(1);
+}
+
+function render(){
+  const sid=getSemId();
+  renderKPI(sid);
+  renderC1();
+  renderC2(sid);
+  renderC3(sid);
+  renderC4(sid);
+  renderC5();
+}
+
+render();
+</script>
+</body>
+</html>

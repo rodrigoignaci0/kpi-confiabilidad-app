@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>KPIs Confiabilidad</title>
+<link rel="stylesheet" href="css/app.css"/>
+<script src="assets/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+</head>
+<body>
+<!-- ══ LOGIN ══ -->
+<div class="overlay" id="loginOverlay" style="display:none;z-index:9999;background:#f0f2f5;align-items:center;justify-content:center">
+  <div class="modal" style="max-width:380px;width:100%;border-radius:16px;overflow:hidden;padding:0">
+    <!-- Header con logo Steel -->
+    <div style="background:#1A1A1A;padding:28px 28px 20px;display:flex;flex-direction:column;align-items:center;gap:14px">
+      <img src="assets/steel-logo.png" alt="Steel" style="height:36px;filter:brightness(0) invert(1)"/>
+      <div style="text-align:center">
+        <div style="color:#fff;font-size:16px;font-weight:700;letter-spacing:.3px">KPI Confiabilidad</div>
+        <div style="color:#9ca3af;font-size:12px;margin-top:3px">Sistema de gestión contractual</div>
+      </div>
+    </div>
+    <!-- Formulario -->
+    <div style="padding:24px 28px">
+      <div class="form-group" style="margin-bottom:14px">
+        <label style="font-size:12px;font-weight:600;color:var(--text2)">Usuario</label>
+        <input type="text" id="loginUser" placeholder="nombre de usuario" autocomplete="username"
+          onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()"/>
+      </div>
+      <div class="form-group">
+        <label style="font-size:12px;font-weight:600;color:var(--text2)">Contraseña</label>
+        <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"
+          onkeydown="if(event.key==='Enter')loginSubmit()"/>
+      </div>
+      <div id="loginError" style="color:#dc2626;font-size:12px;margin-top:8px;display:none;padding:8px 10px;background:#fef2f2;border-radius:6px">
+        Usuario o contraseña incorrectos.
+      </div>
+      <button class="btn btn-primary" onclick="loginSubmit()" style="width:100%;margin-top:18px;padding:11px;font-size:14px;font-weight:700">
+        Ingresar
+      </button>
+      <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--text3)">Acceso restringido · Solo personal autorizado</div>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+
+<!-- SIDEBAR (desktop/tablet grande) -->
+<aside class="sidebar" id="sidebar">
+  <div class="brand" style="cursor:pointer" onclick="toggleSidebar()" title="Colapsar/Expandir">
+    <div class="brand-icon">
+      <img class="brand-full" src="assets/steel-logo.png" alt="Steel"/>
+      <img class="brand-mini" src="assets/steel-icon.png" alt="S"/>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="sidebar-section">Vistas</div>
+    <button class="sb-btn active" onclick="showTab('dashboard')" data-tab="dashboard" data-tip="Dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      <span class="sb-label">Dashboard</span>
+    </button>
+    <button class="sb-btn" onclick="showTab('resumen')" data-tab="resumen" data-tip="Resumen Periodo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span class="sb-label">Resumen Periodo</span>
+    </button>
+    <button class="sb-btn" onclick="showTab('historial')" data-tab="historial" data-tip="Historial">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span class="sb-label">Historial</span>
+    </button>
+    <button class="sb-btn" onclick="showTab('detenciones')" data-tab="detenciones" data-tip="Detenciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <span class="sb-label">Detenciones</span>
+    </button>
+    <div class="sidebar-section">Acciones</div>
+    <button class="sb-btn rol-edit" onclick="openModal('modalKPI')" data-tip="Registrar KPI">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span class="sb-label">Registrar KPI</span>
+    </button>
+    <button class="sb-btn" onclick="exportarExcel()" data-tip="Exportar Excel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="8 13 10.5 16 8 19"/><polyline points="16 13 13.5 16 16 19"/></svg>
+      <span class="sb-label">Exportar Excel</span>
+    </button>
+    <button class="sb-btn" onclick="exportarCSV()" data-tip="Exportar CSV">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span class="sb-label">Exportar CSV</span>
+    </button>
+    <div class="sidebar-section rol-config">Sistema</div>
+    <button class="sb-btn rol-config" onclick="showTab('bd-loader')" data-tab="bd-loader" data-tip="Cargar BD">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span class="sb-label">Cargar BD</span>
+    </button>
+    <button class="sb-btn rol-config" onclick="showTab('config')" data-tab="config" data-tip="Configuración">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 1.41 14.14M4.93 4.93a10 10 0 0 0 0 14.14M19.07 19.07A10 10 0 0 1 4.93 19.07"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2"/></svg>
+      <span class="sb-label">Configuración</span>
+    </button>
+    <button class="sb-btn" onclick="AUTH.logout()" data-tip="Cerrar sesión">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span class="sb-label">Cerrar sesión</span>
+    </button>
+  </nav>
+  <div class="sidebar-footer">
+    <strong id="sfNombre">—</strong>
+    <span id="sfPeriodo">—</span>
+    <span id="sfRol" style="font-size:9px;color:var(--text2);margin-top:1px"></span>
+  </div>
+</aside>
+
+<!-- Toggle sidebar -->
+<div class="sb-toggle" id="sbToggle" onclick="toggleSidebar()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+</div>
+
+<!-- BOTTOM NAV (≤860px) -->
+<nav class="bottom-nav">
+  <button class="bn-btn active" onclick="showTab('dashboard')" data-bnav="dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    Dashboard
+  </button>
+  <button class="bn-btn" onclick="showTab('resumen')" data-bnav="resumen">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    Resumen
+  </button>
+  <button class="bn-btn add rol-edit" onclick="openModal('modalKPI')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Registrar
+  </button>
+  <button class="bn-btn" onclick="showTab('historial')" data-bnav="historial">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    Historial
+  </button>
+  <button class="bn-btn" onclick="showTab('detenciones')" data-bnav="detenciones">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    Detenciones
+  </button>
+</nav>
+
+<div class="page">
+<main>
+
+<!-- ══ DASHBOARD ══ -->
+<div class="tab-content active" id="tab-dashboard">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Dashboard KPIs</h2>
+      <p class="page-sub">Indicadores contractuales de confiabilidad</p>
+    </div>
+    <div class="ph-right">
+      <button class="btn btn-primary" onclick="openModal('modalKPI')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Registrar Valor
+      </button>
+    </div>
+  </div>
+  <div id="scoreBanner"></div>
+  <!-- Panel IA Dashboard -->
+  <div class="dash-card" style="margin-bottom:16px;padding:14px">
+    <div class="dash-card-title" style="margin-bottom:10px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+      Diagnóstico IA — Análisis automático
+    </div>
+    <div id="panelIA-dashboard"></div>
+  </div>
+  <div id="alertasRiesgo"></div>
+  <div class="kpi-grid" id="kpiGrid"></div>
+  <div class="dash-2col">
+    <div class="dash-card">
+      <div class="dash-card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Radar del Contrato
+      </div>
+      <div class="radar-wrap" id="radarWrap"></div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Proyección próximo periodo
+      </div>
+      <div class="proy-list" id="proyeccionList"></div>
+    </div>
+  </div>
+  <div class="dash-card" style="margin-bottom:16px">
+    <div class="dash-card-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Tendencia histórica por KPI
+    </div>
+    <div class="trend-chart" id="tendenciaChart"></div>
+    <div class="trend-legend" id="tendenciaLegend"></div>
+  </div>
+  <div class="dash-card" style="margin-bottom:16px">
+    <div class="dash-card-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Semáforo histórico por periodo
+    </div>
+    <div id="calendarioHeat"></div>
+  </div>
+</div>
+
+<!-- ══ RESUMEN ══ -->
+<div class="tab-content" id="tab-resumen">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Resumen por Periodo</h2>
+      <p class="page-sub">Nota ponderada y detalle por indicador</p>
+    </div>
+    <div class="ph-right">
+      <select id="filtroPeriodoResumen" onchange="renderResumen()">
+        <option value="">Último por KPI</option>
+      </select>
+      <button class="btn btn-ghost" onclick="exportarCSV()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        CSV
+      </button>
+    </div>
+  </div>
+  <div id="resumenContent"></div>
+</div>
+
+<!-- ══ HISTORIAL ══ -->
+<div class="tab-content" id="tab-historial">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Historial de Registros</h2>
+      <p class="page-sub">Todos los valores ingresados</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Registros</div>
+      <div class="ch-filters">
+        <select id="filtroHistKpi" onchange="renderHistorial()">
+          <option value="">Todos los KPIs</option>
+        </select>
+        <select id="filtroHistPer" onchange="renderHistorial()">
+          <option value="">Todos los periodos</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>#</th><th>Indicador</th><th>Freq.</th><th>Periodo</th>
+          <th>Realizado</th><th>Planificado</th><th>%</th>
+          <th>Nota</th><th>Pond.</th><th></th>
+        </tr></thead>
+        <tbody id="histBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ DETENCIONES ══ -->
+<div class="tab-content" id="tab-detenciones">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Análisis de Detenciones</h2>
+      <p class="page-sub">Gráficos dinámicos en tiempo real desde la base de datos de equipos</p>
+    </div>
+  </div>
+
+  <!-- SECCIÓN 1: DASHBOARD DINÁMICO (desde BD) -->
+  <div style="margin-bottom:24px;padding:16px;background:var(--bg);border-radius:8px;border-left:4px solid #3b82f6">
+    <div style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text)">📊 Dashboard Dinámico</div>
+    <div id="detencionesDinamicoContent"></div>
+  </div>
+
+  <!-- SECCIÓN 2: GRÁFICOS ANALÍTICOS -->
+  <div style="margin-bottom:12px;padding:12px;background:var(--bg);border-radius:8px;border-left:4px solid #8b5cf6">
+    <div style="font-size:14px;font-weight:600;color:var(--text)">📈 Análisis Detallado de Detenciones</div>
+  </div>
+
+  <!-- Filtros para Gráficos Analíticos -->
+  <div class="card" style="margin-bottom:16px;padding:16px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px">Tipo de Equipo</label>
+        <div style="display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid var(--border);border-radius:6px;background:white">
+          <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px">
+            <input type="checkbox" id="filterEquipo_JR" value="JR" onchange="aplicarFiltrosAnalisis()" checked/> JR (Jumbos Radiales)
+          </label>
+          <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px">
+            <input type="checkbox" id="filterEquipo_JRS" value="JRS" onchange="aplicarFiltrosAnalisis()" checked/> JRS
+          </label>
+          <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px">
+            <input type="checkbox" id="filterEquipo_LE" value="LE" onchange="aplicarFiltrosAnalisis()" checked/> LE (Cargadores)
+          </label>
+          <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px">
+            <input type="checkbox" id="filterEquipo_LH" value="LH" onchange="aplicarFiltrosAnalisis()" checked/> LH (Excavadoras)
+          </label>
+          <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px">
+            <input type="checkbox" id="filterEquipo_OTRO" value="OTRO" onchange="aplicarFiltrosAnalisis()" checked/> Otros
+          </label>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px">Tipo Mantenimiento</label>
+        <div style="display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid var(--border);border-radius:6px;background:white">
+          <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px">
+            <input type="checkbox" id="filterMant_PM" value="PM" onchange="aplicarFiltrosAnalisis()" checked/> PM (Preventivo)
+          </label>
+          <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px">
+            <input type="checkbox" id="filterMant_PL" value="PL" onchange="aplicarFiltrosAnalisis()" checked/> PL (Planificado)
+          </label>
+          <label style="font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px">
+            <input type="checkbox" id="filterMant_NP" value="NP" onchange="aplicarFiltrosAnalisis()" checked/> NP (No Programado)
+          </label>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:8px">
+        <button class="btn btn-primary" onclick="aplicarFiltrosAnalisis()" style="width:100%;padding:8px">Aplicar</button>
+        <button class="btn btn-secondary" onclick="limpiarFiltrosAnalisis()" style="width:100%;padding:8px">Limpiar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI strip -->
+  <div id="detKpiRow" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px"></div>
+
+  <!-- Row 1 -->
+  <div style="display:flex;gap:14px;margin-bottom:14px">
+    <div class="card" style="flex:0 0 60%">
+      <div class="card-title">Pérdidas por Categoría</div>
+      <div class="card-sub">Barras apiladas % InDisp + tendencia</div>
+      <div id="detC1"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;font-size:10px;color:var(--text2)">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#06b6d4;display:inline-block"></span>Falta Repuesto</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#0f766e;display:inline-block"></span>Mant. NP</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#f59e0b;display:inline-block"></span>Mant. PL</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#dc2626;display:inline-block"></span>EQAC</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:18px;height:2px;background:#0f766e;display:inline-block"></span>% InDisp</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:18px;height:2px;background:#dc2626;display:inline-block"></span>Parque Op.</span>
+      </div>
+    </div>
+    <div class="card" style="flex:1">
+      <div class="card-title">Cascada de Pérdidas</div>
+      <div class="card-sub" id="detSubC2">Waterfall desde 100% disponibilidad</div>
+      <div id="detC2" style="overflow-x:auto"></div>
+    </div>
+  </div>
+
+  <!-- Row 2 -->
+  <div style="display:flex;gap:14px;margin-bottom:14px">
+    <div class="card" style="flex:1">
+      <div class="card-title">Jack Knife — Frecuencia vs MTTR</div>
+      <div class="card-sub" id="detSubC3"></div>
+      <div id="detC3"></div>
+      <div style="display:flex;gap:10px;margin-top:8px;font-size:10px;color:var(--text2)">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#dc2626;display:inline-block"></span>Disp &lt; 60%</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#0ea5e9;display:inline-block"></span>Disp ≥ 60%</span>
+      </div>
+    </div>
+    <div class="card" style="flex:1">
+      <div class="card-title">Pareto Disponibilidad por Equipo</div>
+      <div class="card-sub" id="detSubC4"></div>
+      <div id="detC4"></div>
+      <div style="display:flex;gap:10px;margin-top:8px;font-size:10px;color:var(--text2)">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#16a34a;display:inline-block"></span>≥ 80%</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#f59e0b;display:inline-block"></span>60–79%</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#dc2626;display:inline-block"></span>&lt; 60%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3 -->
+  <div class="card">
+    <div class="card-title">NP por Sistema</div>
+    <div class="card-sub">Detalle mantenimiento no planificado</div>
+    <div id="detC5"></div>
+  </div>
+
+  <!-- Panel IA Detenciones -->
+  <div class="card" style="margin-top:14px">
+    <div class="card-title" style="display:flex;align-items:center;gap:6px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="14" height="14"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+      Diagnóstico IA — Detenciones
+    </div>
+    <div class="card-sub">Verifica gráficos, detecta inconsistencias y patrones críticos automáticamente</div>
+    <div id="panelIA-detenciones" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- ══ CARGAR BASE DE DATOS ══ -->
+<div class="tab-content" id="tab-bd-loader">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Base de Datos</h2>
+      <p class="page-sub">SQLite con datos de detenciones y equipos</p>
+    </div>
+  </div>
+  <div class="card" style="max-width:600px">
+    <div class="card-header">
+      <div class="card-title">📊 Estado de la Base de Datos</div>
+    </div>
+    <div style="padding:24px">
+      <div id="dbLoadStatus" style="margin-bottom:16px;padding:12px;background:var(--bg);border-radius:6px;display:none">
+        <div style="font-size:13px;color:var(--text2)" id="dbLoadStatusText"></div>
+      </div>
+      <div id="dbLoadedInfo" style="margin-bottom:16px;padding:12px;background:#dcfce7;color:#166534;border-radius:6px;display:none;border:1px solid #bbf7d0">
+        <div style="font-weight:600;margin-bottom:4px">✓ Base de datos cargada automáticamente</div>
+        <div id="dbLoadedDetail" style="font-size:12px"></div>
+      </div>
+      <div id="dbManualLoadSection" style="display:none">
+        <p style="color:var(--text2);margin-bottom:16px">
+          Si la auto-carga no funcionó, selecciona manualmente:<br/>
+          <code style="background:var(--bg);padding:4px 8px;border-radius:4px;font-size:12px">
+            TABLA_MAESTRA_MANTENIBILIDAD_EQUIPOS_MOVILES_66.db
+          </code>
+        </p>
+        <input type="file" id="dbFileInput" accept=".db,.sqlite,.sqlite3" style="padding:8px;border:1px solid var(--border);border-radius:6px;width:100%;margin-bottom:16px;display:none"/>
+        <button class="btn btn-primary" id="cargarBDBtn" onclick="cargarBD()" style="width:100%;display:none">Cargar Base de Datos</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CONFIGURACIÓN ══ -->
+<div class="tab-content" id="tab-config">
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Configuración</h2>
+      <p class="page-sub">Parámetros del contrato y metas por KPI</p>
+    </div>
+  </div>
+  <div id="configContent"></div>
+</div>
+
+</main>
+</div><!-- .page -->
+</div><!-- .layout -->
+
+<!-- ══ MODAL ══ -->
+<div class="overlay" id="modalKPI">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Registrar Valor KPI</h2>
+      <button class="modal-close" onclick="closeModal('modalKPI')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="regId"/>
+      <div class="form-group">
+        <label>Indicador *</label>
+        <select id="regKpi" onchange="onKpiChange()"><option value="">Seleccionar...</option></select>
+      </div>
+      <div class="form-group">
+        <label>Ciclo *</label>
+        <select id="regPeriodo"></select>
+        <div id="periodoHint" style="font-size:11px;color:var(--text2);margin-top:4px"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label id="lblNum">Realizadas *</label>
+          <input type="number" id="regNum" min="0" step="0.01" placeholder="0" oninput="calcNota()"/>
+        </div>
+        <div class="form-group">
+          <label id="lblDen">Planificadas *</label>
+          <input type="number" id="regDen" min="0.01" step="0.01" placeholder="100" oninput="calcNota()"/>
+        </div>
+      </div>
+      <div class="calc-box" id="calcBox">
+        <div class="calc-row">
+          <div class="calc-item"><div class="lbl">RESULTADO %</div><div class="val" id="calcPct"></div></div>
+          <div class="calc-sep"></div>
+          <div class="calc-item"><div class="lbl">NOTA</div><div class="val" id="calcNota"></div></div>
+          <div class="calc-sep"></div>
+          <div style="flex:1;min-width:120px">
+            <div style="font-size:10px;color:var(--text2);font-weight:600;margin-bottom:6px">VS META</div>
+            <div class="gauge-bar"><div id="calcBar"></div></div>
+            <div id="calcMeta" style="font-size:10px;color:var(--text2);margin-top:3px"></div>
+          </div>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:14px">
+        <label>Observación</label>
+        <textarea id="regObs" placeholder="Notas adicionales..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalKPI')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardar()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/kpi-config.js"></script>
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/resumen.js"></script>
+<script src="js/historial.js"></script>
+<script src="js/modal.js"></script>
+<script src="js/det-config.js"></script>
+<script src="js/detenciones.js"></script>
+<script src="js/gemini.js"></script>
+<script src="js/bd-loader.js"></script>
+<script src="js/dashboard-dinamico.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

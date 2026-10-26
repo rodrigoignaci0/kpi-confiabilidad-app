@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dashboard Ejecutivo — Confiabilidad</title>
+<link rel="stylesheet" href="css/app.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-height:100vh;overflow-x:hidden;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+.ej-wrap{width:100%;max-width:1600px;margin:0 auto;padding:20px 24px}
+.ej-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.ej-header h1{font-size:22px;font-weight:800;margin:0;color:var(--text)}
+.ej-header .sub{font-size:12px;color:var(--text2);margin-top:2px}
+.ej-filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ej-filters select{padding:7px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--bg);color:var(--text)}
+.ej-filters label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.section-title{font-size:13px;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border)}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+.kpi-label{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi-value{font-size:24px;font-weight:800;line-height:1}
+.btn-icon{background:none;border:1px solid var(--border);border-radius:5px;padding:3px 7px;font-size:12px;cursor:pointer;color:var(--text2);line-height:1;transition:background .15s}
+.btn-icon:hover{background:var(--surface2)}
+.fullscreen-mode{position:fixed;inset:0;z-index:9990;background:var(--bg);overflow-y:auto}
+.fullscreen-mode .ej-wrap{max-width:100%;padding:12px 16px}
+.ej-logo{display:flex;align-items:center;gap:10px}
+.ej-logo img{height:28px}
+.loading-msg{text-align:center;padding:60px;font-size:14px;color:var(--text2)}
+.ej-row1{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:20px}
+.ej-row2{display:grid;grid-template-columns:3fr 2fr;gap:14px;margin-bottom:20px}
+.ej-row3{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.card canvas{max-width:100%}
+@media(max-width:1024px){
+  .ej-row1{grid-template-columns:1fr 1fr}
+  .ej-row2{grid-template-columns:1fr}
+  .ej-row3{grid-template-columns:1fr}
+  .ej-wrap{padding:14px 16px}
+}
+@media(max-width:640px){
+  .ej-row1{grid-template-columns:1fr}
+  .ej-row2{grid-template-columns:1fr}
+  .ej-row3{grid-template-columns:1fr}
+  .ej-wrap{padding:10px 10px}
+  .ej-header{flex-direction:column;align-items:flex-start}
+  .ej-filters{width:100%;justify-content:space-between}
+  .ej-filters>div{flex:1;min-width:0}
+  .ej-filters select{width:100%;min-width:0}
+  .kpi-value{font-size:20px}
+  .section-title{font-size:11px}
+  .ej-header h1{font-size:16px}
+  .card{padding:12px!important}
+  #ejFlotaKpis{grid-template-columns:1fr 1fr!important}
+}
+</style>
+</head>
+<body>
+
+<div id="ejPage">
+<div class="ej-wrap">
+  <!-- Header -->
+  <div class="ej-header">
+    <div class="ej-logo">
+      <img src="assets/steel-logo.png" alt="Steel"/>
+      <div>
+        <h1>DASHBOARD EJECUTIVO</h1>
+        <div class="sub" id="ejSubtitle">Cargando datos...</div>
+      </div>
+    </div>
+    <div class="ej-filters">
+      <div>
+        <label>Flota</label>
+        <select id="ejFlota" onchange="renderEjecutivo()">
+          <option value="JR">Jumbos JR</option>
+          <option value="JRS">Jumbos JRS</option>
+          <option value="PICARROCA">Picarroca</option>
+          <option value="RB3">RB3</option>
+          <option value="ALL">Toda la Flota</option>
+        </select>
+      </div>
+      <div>
+        <label>Semana</label>
+        <select id="ejSemana" onchange="renderEjecutivo()">
+          <option value="0">Todas</option>
+        </select>
+      </div>
+      <div>
+        <label>Mes</label>
+        <select id="ejMes" onchange="renderEjecutivo()">
+          <option value="0">Todos</option>
+          <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+          <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+          <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+          <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+        </select>
+      </div>
+      <div>
+        <label>Ano</label>
+        <select id="ejYear" onchange="cargarDatos()">
+          <option value="2026" selected>2026</option>
+          <option value="2025">2025</option>
+        </select>
+      </div>
+      <button class="btn-icon" onclick="toggleFullscreen()" title="Pantalla completa" style="font-size:16px" id="btnFullscreen">&#x26F6;</button>
+    </div>
+  </div>
+
+  <div id="ejContent">
+    <div class="loading-msg">Cargando datos...</div>
+  </div>
+</div>
+</div>
+
+<!-- Template de contenido (se inyecta despues de cargar) -->
+<template id="ejTemplate">
+  <!-- Fila 1: KPIs + Donut + Pie -->
+  <div class="ej-row1">
+    <div class="card" style="padding:16px;text-align:center">
+      <div class="section-title" style="color:#e67e22">Disponibilidad Semanal</div>
+      <canvas id="chartEjDonut" style="max-height:220px"></canvas>
+    </div>
+    <div class="card" style="padding:16px">
+      <div class="section-title" style="color:#e67e22">Resumen Flota</div>
+      <div id="ejFlotaKpis" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px"></div>
+    </div>
+    <div class="card" style="padding:16px;text-align:center">
+      <div class="section-title" style="color:#e67e22">Horas distribuidas segun estado</div>
+      <canvas id="chartEjPie" style="max-height:220px"></canvas>
+    </div>
+  </div>
+  <!-- Fila 2 -->
+  <div class="ej-row2">
+    <div class="card" style="padding:16px">
+      <div class="section-title" style="color:#00838f">KPI Desempeno / Cantidad promedio Dia</div>
+      <canvas id="chartEjDispDia" style="max-height:280px"></canvas>
+    </div>
+    <div class="card" style="padding:16px">
+      <div class="section-title" style="color:#e67e22">Horas por Tipo de Detencion</div>
+      <canvas id="chartEjTipoDet" style="max-height:280px"></canvas>
+    </div>
+  </div>
+  <!-- Fila 3 -->
+  <div class="ej-row3">
+    <div class="card" style="padding:16px">
+      <div class="section-title" style="color:#00838f">Horas de detencion por sistema / Disponibilidad</div>
+      <canvas id="chartEjSistEquipo" style="max-height:320px"></canvas>
+    </div>
+    <div class="card" style="padding:16px">
+      <div class="section-title" style="color:#e67e22">Distribucion de Horas por Componente (Top 15)</div>
+      <canvas id="chartEjComponentes" style="max-height:320px"></canvas>
+    </div>
+  </div>
+</template>
+
+<script>
+var FLOTA_EQUIPOS = {
+  JR: ['JR001','JR002','JR003','JR004','JR005','JR006','JR007','JR008','JR009','JR010'],
+  JRS: ['JRS001','JRS002'],
+  PICARROCA: ['PICARROCA N1','PICARROCA N2'],
+  RB3: ['RB3-11','RB3-12','RB3-13']
+};
+var ALL_DATA = [];
+var _ejCharts = {};
+
+function sumHorasCap(arr) {
+  var byTurno = {};
+  arr.forEach(function(d) {
+    var k = (d.equipo||'') + '|' + (d.fecha_inicio||'').substring(0,10) + '|' + (d.turno||'');
+    if (!byTurno[k]) byTurno[k] = { np: 0, pl: 0 };
+    if ((d.mantenimiento||'').toUpperCase() === 'NP') byTurno[k].np += parseFloat(d.detencion_total_horas) || 0;
+    else byTurno[k].pl += parseFloat(d.detencion_total_horas) || 0;
+  });
+  var totalNP = 0, totalPL = 0;
+  Object.keys(byTurno).forEach(function(k) {
+    var t = byTurno[k], sum = t.np + t.pl;
+    if (sum > 12) { var f = 12 / sum; t.np *= f; t.pl *= f; }
+    totalNP += t.np; totalPL += t.pl;
+  });
+  return { np: totalNP, pl: totalPL, total: totalNP + totalPL };
+}
+
+async function cargarDatos() {
+  var year = document.getElementById('ejYear').value;
+  var semana = document.getElementById('ejSemana').value;
+  document.getElementById('ejContent').innerHTML = '<div class="loading-msg">Cargando datos...</div>';
+  try {
+    var url = '/api/detenciones-public?year=' + year;
+    var resp = await fetch(url);
+    var datos = await resp.json();
+    if (!Array.isArray(datos)) throw new Error('Error cargando datos');
+    ALL_DATA = datos;
+    poblarFiltroSemanas(datos);
+    // Inyectar template
+    var tpl = document.getElementById('ejTemplate').content.cloneNode(true);
+    document.getElementById('ejContent').innerHTML = '';
+    document.getElementById('ejContent').appendChild(tpl);
+    renderEjecutivo();
+  } catch(e) {
+    document.getElementById('ejContent').innerHTML = '<div class="loading-msg" style="color:#dc2626">Error: ' + e.message + '</div>';
+  }
+}
+
+function poblarFiltroSemanas(datos) {
+  var semSet = {};
+  datos.forEach(function(d) { if (d.semana) semSet[d.semana] = true; });
+  var sems = Object.keys(semSet).map(Number).sort(function(a,b){return a-b;});
+  var sel = document.getElementById('ejSemana');
+  var cur = sel.value;
+  sel.innerHTML = '<option value="0">Todas</option>';
+  sems.forEach(function(s) { sel.innerHTML += '<option value="' + s + '">S' + s + '</option>'; });
+  sel.value = cur;
+}
+
+function filtrarDatos() {
+  var semana = parseInt(document.getElementById('ejSemana').value) || 0;
+  var mes = parseInt(document.getElementById('ejMes').value) || 0;
+  return ALL_DATA.filter(function(d) {
+    if (semana && parseInt(d.semana) !== semana) return false;
+    if (mes && d.fecha_inicio) {
+      var m = parseInt(d.fecha_inicio.substring(5,7));
+      if (m !== mes) return false;
+    }
+    return true;
+  });
+}
+
+function renderEjecutivo() {
+  var todos = filtrarDatos();
+  if (!document.getElementById('chartEjDonut')) return;
+  var flota = document.getElementById('ejFlota').value;
+  var equiposFlota = flota === 'ALL' ? [].concat(FLOTA_EQUIPOS.JR, FLOTA_EQUIPOS.JRS, FLOTA_EQUIPOS.PICARROCA, FLOTA_EQUIPOS.RB3) : FLOTA_EQUIPOS[flota] || [];
+  var datos = todos.filter(function(d) { return equiposFlota.indexOf(d.equipo) >= 0; });
+  var np = datos.filter(function(d) { return (d.mantenimiento||'').toUpperCase() === 'NP'; });
+  var pl = datos.filter(function(d) { return (d.mantenimiento||'').toUpperCase() === 'PL'; });
+  var totalEq = equiposFlota.length;
+  var semanas = []; var semSet = {};
+  datos.forEach(function(d) { if (d.semana && !semSet[d.semana]) { semSet[d.semana] = true; semanas.push(d.semana); }});
+  var nSemanas = semanas.length || 1;
+  var cap = sumHorasCap(datos);
+  var hrsNP = cap.np;
+  var hrsPL = cap.pl;
+  var cal = totalEq * nSemanas * 168;
+  var disp = cal > 0 ? ((cal - hrsNP - hrsPL) / cal * 100) : 0;
+  var hrsDisp = cal - hrsNP - hrsPL;
+  ejRenderDonut(disp);
+  ejRenderFlotaKpis(totalEq, nSemanas, disp, hrsNP);
+  ejRenderPie(hrsNP, hrsPL, hrsDisp);
+  ejRenderDispDia(datos, totalEq);
+  ejRenderTipoDet(np);
+  ejRenderSistEquipo(datos, equiposFlota);
+  ejRenderComponentes(np);
+  var semLabel = semanas.sort().map(function(s){return 'S'+s;}).join(', ');
+  var mesLabel = document.getElementById('ejMes').selectedOptions[0].textContent;
+  document.getElementById('ejSubtitle').textContent = (flota === 'ALL' ? 'Toda la Flota' : 'Flota ' + flota) + ' · ' + semLabel + ' · ' + np.length + ' fallas NP · ' + datos.length + ' registros';
+}
+
+function ejRenderDonut(disp) {
+  if (_ejCharts.donut) _ejCharts.donut.destroy();
+  _ejCharts.donut = new Chart(document.getElementById('chartEjDonut'), {
+    type: 'doughnut',
+    data: { labels: ['Disponible','Indisponible'], datasets: [{ data: [disp, 100-disp], backgroundColor: ['#00838f','#e0e0e0'], borderWidth: 0 }] },
+    options: { cutout: '70%', plugins: { legend: { display: false }, tooltip: { enabled: true } } },
+    plugins: [{ id: 'centerText', afterDraw: function(chart) {
+      var ctx = chart.ctx, w = chart.width, h = chart.height;
+      ctx.save(); ctx.font = 'bold 28px sans-serif'; ctx.fillStyle = '#00838f'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(disp.toFixed(1) + '%', w/2, h/2); ctx.restore();
+    }}]
+  });
+}
+
+function ejRenderFlotaKpis(totalEq, nSemanas, disp, hrsNP) {
+  var eqProm = totalEq * disp / 100;
+  document.getElementById('ejFlotaKpis').innerHTML =
+    '<div class="kpi-card"><div class="kpi-label">Total Equipos</div><div class="kpi-value">' + totalEq + '</div></div>' +
+    '<div class="kpi-card"><div class="kpi-label">Semanas</div><div class="kpi-value">' + nSemanas + '</div></div>' +
+    '<div class="kpi-card"><div class="kpi-label">Eq. Prom. Disponibles</div><div class="kpi-value">' + eqProm.toFixed(1) + '</div></div>' +
+    '<div class="kpi-card"><div class="kpi-label">Horas NP Total</div><div class="kpi-value" style="color:#dc2626">' + hrsNP.toFixed(0) + '</div></div>';
+}
+
+function ejRenderPie(hrsNP, hrsPL, hrsDisp) {
+  if (_ejCharts.pie) _ejCharts.pie.destroy();
+  _ejCharts.pie = new Chart(document.getElementById('chartEjPie'), {
+    type: 'doughnut',
+    data: { labels: ['Tiempo NP','Tiempo PL','Tiempo Disponible'], datasets: [{ data: [hrsNP, hrsPL, hrsDisp], backgroundColor: ['#dc2626','#f59e0b','#16a34a'], borderWidth: 1 }] },
+    options: { plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, usePointStyle: true } },
+      tooltip: { callbacks: { label: function(ctx) { var t = ctx.dataset.data.reduce(function(a,b){return a+b},0); return ctx.label + ': ' + ctx.raw.toFixed(0) + 'h (' + (ctx.raw/t*100).toFixed(1) + '%)'; }}}
+    }}
+  });
+}
+
+function ejRenderDispDia(datos, totalEq) {
+  var byDay = {};
+  datos.forEach(function(d) {
+    if (!d.fecha_inicio) return;
+    var dia = d.fecha_inicio.substring(0,10);
+    if (!byDay[dia]) byDay[dia] = { eqSet: {}, regs: [] };
+    byDay[dia].eqSet[d.equipo] = true;
+    byDay[dia].regs.push(d);
+  });
+  Object.keys(byDay).forEach(function(dia) {
+    var cap = sumHorasCap(byDay[dia].regs);
+    byDay[dia].np = cap.np; byDay[dia].pl = cap.pl;
+  });
+  var dias = Object.keys(byDay).sort().slice(-14);
+  var labels = dias.map(function(d) { var p = d.split('-'); return parseInt(p[2]) + '/' + parseInt(p[1]); });
+  var dispArr = dias.map(function(d) { var i = byDay[d]; return Math.max(0, (totalEq*24 - i.np - i.pl) / (totalEq*24) * 100); });
+  var eqProm = dias.map(function(d) { return Object.keys(byDay[d].eqSet).length; });
+  if (_ejCharts.dispDia) _ejCharts.dispDia.destroy();
+  _ejCharts.dispDia = new Chart(document.getElementById('chartEjDispDia'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: '% Disponibilidad', data: dispArr, backgroundColor: '#00838f', borderRadius: 3, order: 2, yAxisID: 'y' },
+        { label: 'Equipos c/Detencion', data: eqProm, type: 'line', borderColor: '#e67e22', backgroundColor: '#e67e22', pointRadius: 4, pointStyle: 'rectRot', tension: 0.3, order: 1, yAxisID: 'y1' }
+      ]
+    },
+    options: {
+      responsive: true, plugins: { legend: { position: 'top', labels: { font: { size: 10 }, usePointStyle: true } },
+        tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + (ctx.dataset.yAxisID === 'y' ? ctx.raw.toFixed(1) + '%' : ctx.raw); }}}
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100, title: { display: true, text: '% Disponibilidad', font: { size: 10 } }, ticks: { callback: function(v) { return v + '%'; }, font: { size: 10 } } },
+        y1: { position: 'right', beginAtZero: true, max: totalEq + 2, title: { display: true, text: 'Equipos', font: { size: 10 } }, grid: { drawOnChartArea: false }, ticks: { font: { size: 10 } } },
+        x: { ticks: { font: { size: 10 } } }
+      }
+    },
+    plugins: [{ id: 'barLabels', afterDatasetsDraw: function(chart) {
+      var meta = chart.getDatasetMeta(0);
+      var ctx = chart.ctx;
+      ctx.save(); ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+      meta.data.forEach(function(bar, i) { ctx.fillText(dispArr[i].toFixed(1) + '%', bar.x, bar.y + 14); });
+      ctx.restore();
+    }}]
+  });
+}
+
+function ejRenderTipoDet(np) {
+  var byTipo = {};
+  np.forEach(function(d) { var t = d.tipo_de_perdida || 'SIN TIPO'; byTipo[t] = (byTipo[t]||0) + (parseFloat(d.detencion_total_horas)||0); });
+  var sorted = Object.keys(byTipo).sort(function(a,b){ return byTipo[b]-byTipo[a]; });
+  var labels = sorted.map(function(t) { return t.length > 20 ? t.substring(0,18) + '...' : t; });
+  var vals = sorted.map(function(t) { return byTipo[t]; });
+  if (_ejCharts.tipoDet) _ejCharts.tipoDet.destroy();
+  _ejCharts.tipoDet = new Chart(document.getElementById('chartEjTipoDet'), {
+    type: 'bar',
+    data: { labels: labels, datasets: [{ data: vals, backgroundColor: '#00838f', borderRadius: 3 }] },
+    options: {
+      indexAxis: 'y', responsive: true,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { title: function(items) { return sorted[items[0].dataIndex]; } } } },
+      scales: { x: { title: { display: true, text: 'Horas', font: { size: 10 } }, ticks: { font: { size: 10 } } }, y: { ticks: { font: { size: 10 } } } }
+    }
+  });
+}
+
+function ejRenderSistEquipo(datos, equipos) {
+  var sistemas = {};
+  var byEq = {};
+  datos.forEach(function(d) {
+    if ((d.mantenimiento||'').toUpperCase() !== 'NP') return;
+    var eq = d.equipo, s = d.sistemas || 'OTRO';
+    if (!byEq[eq]) byEq[eq] = {};
+    byEq[eq][s] = (byEq[eq][s]||0) + (parseFloat(d.detencion_total_horas)||0);
+    sistemas[s] = true;
+  });
+  var sistList = Object.keys(sistemas).sort();
+  var eqSorted = equipos.slice().sort(function(a,b) {
+    var ta = 0, tb = 0;
+    sistList.forEach(function(s) { ta += (byEq[a]||{})[s]||0; tb += (byEq[b]||{})[s]||0; });
+    return tb - ta;
+  });
+  var colors = ['#00838f','#e67e22','#6366f1','#dc2626','#16a34a','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#a855f7','#64748b'];
+  var datasets = sistList.map(function(s, i) {
+    return { label: s.length > 12 ? s.substring(0,10) + '..' : s, data: eqSorted.map(function(eq) { return (byEq[eq]||{})[s]||0; }), backgroundColor: colors[i % colors.length], borderRadius: 2 };
+  });
+  var dispLine = eqSorted.map(function(eq) {
+    var npH = 0; sistList.forEach(function(s) { npH += (byEq[eq]||{})[s]||0; });
+    var nSem = 0; var semSet = {};
+    datos.forEach(function(d) { if (d.equipo === eq && d.semana && !semSet[d.semana]) { semSet[d.semana] = true; nSem++; }});
+    nSem = nSem || 1;
+    return Math.max(0, (nSem*168 - npH) / (nSem*168) * 100);
+  });
+  datasets.push({ label: 'Disponibilidad', data: dispLine, type: 'line', borderColor: '#dc2626', backgroundColor: '#dc2626', pointRadius: 4, tension: 0.3, yAxisID: 'y1', order: 0 });
+  if (_ejCharts.sistEq) _ejCharts.sistEq.destroy();
+  _ejCharts.sistEq = new Chart(document.getElementById('chartEjSistEquipo'), {
+    type: 'bar',
+    data: { labels: eqSorted, datasets: datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top', labels: { font: { size: 9 }, usePointStyle: true, boxWidth: 10 } } },
+      scales: {
+        x: { stacked: true, ticks: { font: { size: 10 } } },
+        y: { stacked: true, title: { display: true, text: 'Horas NP', font: { size: 10 } }, ticks: { font: { size: 10 } } },
+        y1: { position: 'right', min: 0, max: 100, title: { display: true, text: 'Disp%', font: { size: 10 } }, grid: { drawOnChartArea: false }, ticks: { callback: function(v){return v+'%';}, font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function ejRenderComponentes(np) {
+  var byComp = {};
+  np.forEach(function(d) { var c = d.componente || 'SIN COMPONENTE'; byComp[c] = (byComp[c]||0) + (parseFloat(d.detencion_total_horas)||0); });
+  var sorted = Object.keys(byComp).sort(function(a,b){ return byComp[b]-byComp[a]; }).slice(0, 15);
+  var labels = sorted.map(function(c) { return c.length > 18 ? c.substring(0,16) + '..' : c; });
+  var vals = sorted.map(function(c) { return byComp[c]; });
+  var colors = ['#00838f','#e67e22','#6366f1','#dc2626','#16a34a','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#a855f7','#64748b','#0ea5e9','#84cc16','#f43f5e','#7c3aed'];
+  if (_ejCharts.comp) _ejCharts.comp.destroy();
+  _ejCharts.comp = new Chart(document.getElementById('chartEjComponentes'), {
+    type: 'bar',
+    data: { labels: labels, datasets: [{ data: vals, backgroundColor: colors }] },
+    options: {
+      responsive: true, plugins: { legend: { display: false } },
+      scales: { y: { title: { display: true, text: 'Horas', font: { size: 10 } }, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 9 }, maxRotation: 45 } } }
+    }
+  });
+}
+
+function toggleFullscreen() {
+  var page = document.getElementById('ejPage');
+  var btn = document.getElementById('btnFullscreen');
+  if (page.classList.contains('fullscreen-mode')) {
+    page.classList.remove('fullscreen-mode');
+    btn.innerHTML = '&#x26F6;';
+    if (document.fullscreenElement) document.exitFullscreen().catch(function(){});
+  } else {
+    page.classList.add('fullscreen-mode');
+    btn.innerHTML = '&#x2715;';
+    page.requestFullscreen().catch(function(){});
+  }
+  setTimeout(function() { Object.keys(_ejCharts).forEach(function(k) { if (_ejCharts[k]) _ejCharts[k].resize(); }); }, 200);
+}
+document.addEventListener('fullscreenchange', function() {
+  if (!document.fullscreenElement) {
+    document.getElementById('ejPage').classList.remove('fullscreen-mode');
+    document.getElementById('btnFullscreen').innerHTML = '&#x26F6;';
+    setTimeout(function() { Object.keys(_ejCharts).forEach(function(k) { if (_ejCharts[k]) _ejCharts[k].resize(); }); }, 200);
+  }
+});
+
+// Auto-load
+cargarDatos();
+</script>
+</body>
+</html>

@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reporte de Turno — KPI Confiabilidad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-heading: 'DM Sans', 'Inter', sans-serif;
+  --cds-bg: #f0f4f8; --cds-fg: #1e293b; --cds-accent: #0d9488;
+  --cds-accent-dark: #0b7c72; --cds-accent-light: rgba(13,148,136,.08);
+  --cds-radius: 12px;
+  --cds-border: #e2e8f0; --cds-panel: #ffffff;
+  --cds-muted: #64748b; --cds-danger: #ef4444; --cds-ok: #10b981;
+  --card-shadow: 0 1px 3px rgba(0,0,0,.08);
+  --card-shadow-hover: 0 4px 12px rgba(0,0,0,.1);
+}
+*{box-sizing:border-box;margin:0}
+body{font-family:var(--font-body);color:var(--cds-fg);background:var(--cds-bg);line-height:1.5;-webkit-font-smoothing:antialiased;padding-top:60px}
+
+/* Header bar */
+.hdr{position:fixed;top:0;left:0;right:0;height:56px;background:var(--cds-panel);border-bottom:1px solid var(--cds-border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;z-index:50;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.hdr-title{font-family:var(--font-heading);font-weight:700;font-size:1.25rem;color:var(--cds-fg);letter-spacing:-.02em}
+.hdr-right{display:flex;align-items:center;gap:12px;font-size:.875rem;color:var(--cds-muted)}
+.hdr-user{font-weight:600;color:var(--cds-fg)}
+
+/* Login overlay */
+#login-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:100}
+.login-box{background:var(--cds-panel);padding:32px;border-radius:var(--cds-radius);min-width:320px;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.login-box h2{margin:0 0 16px;font-family:var(--font-heading);font-size:1.25rem}
+#login-error{color:var(--cds-danger);font-size:.875rem;margin-bottom:8px;display:none}
+
+/* Buttons */
+.btn{font:inherit;font-size:.875rem;font-weight:600;border:none;border-radius:8px;padding:10px 20px;cursor:pointer;transition:all .15s}
+.btn-primary{background:linear-gradient(135deg,var(--cds-accent),var(--cds-accent-dark));color:#fff;box-shadow:0 2px 6px rgba(13,148,136,.3)}
+.btn-primary:hover{box-shadow:0 4px 12px rgba(13,148,136,.4);transform:translateY(-1px)}
+.btn-secondary{background:var(--cds-panel);color:var(--cds-muted);border:1px solid var(--cds-border)}
+.btn-secondary:hover{background:#f1f5f9;color:var(--cds-fg)}
+.btn-sm{padding:6px 12px;font-size:.78rem}
+.btn-danger{background:none;color:var(--cds-danger);border:1px solid var(--cds-danger)}
+.btn-danger:hover{background:rgba(239,68,68,.06)}
+.btn-icon{background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:6px;color:var(--cds-muted);transition:all .15s}
+.btn-icon:hover{background:#f1f5f9;color:var(--cds-fg)}
+
+/* Inputs */
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:.75rem;font-weight:600;color:var(--cds-muted);text-transform:uppercase;letter-spacing:.04em}
+.field input,.field select,.field textarea{font:inherit;font-size:.875rem;color:var(--cds-fg);background:var(--cds-panel);border:1px solid var(--cds-border);border-radius:8px;padding:8px 12px;transition:border-color .15s,box-shadow .15s}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--cds-accent);box-shadow:0 0 0 3px rgba(13,148,136,.12)}
+.field textarea{resize:vertical}
+.field-error{font-size:.75rem;color:var(--cds-danger);display:none}
+
+/* Radio / toggle */
+.radio-group{display:flex;gap:8px;padding-top:2px}
+.radio-group label{display:flex;align-items:center;gap:6px;font-size:.875rem;cursor:pointer;padding:6px 14px;border:1px solid var(--cds-border);border-radius:8px;transition:all .15s}
+.radio-group input{display:none}
+.radio-group input:checked+span{color:var(--cds-accent);font-weight:600}
+.radio-group label:has(input:checked){border-color:var(--cds-accent);background:var(--cds-accent-light)}
+
+.toggle{display:flex;gap:8px;align-items:center}
+.toggle-track{position:relative;width:42px;height:24px;background:var(--cds-border);border-radius:12px;cursor:pointer;transition:background .2s}
+.toggle-track.on{background:var(--cds-accent)}
+.toggle-thumb{position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.toggle-track.on .toggle-thumb{transform:translateX(18px)}
+.toggle-label{font-size:.875rem;font-weight:500}
+
+/* Layout */
+.container{max-width:1200px;margin:0 auto;padding:20px;display:flex;flex-direction:column;gap:20px}
+.card{background:var(--cds-panel);border:1px solid var(--cds-border);border-radius:var(--cds-radius);padding:20px;box-shadow:var(--card-shadow)}
+.card h2{font-family:var(--font-heading);font-size:1.1rem;font-weight:700;margin-bottom:16px;letter-spacing:-.01em}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:.75rem;font-weight:600;color:var(--cds-accent);background:var(--cds-accent-light);padding:4px 10px;border-radius:20px}
+.turno-header{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-actions{display:flex;gap:10px;padding-top:8px;grid-column:1/-1}
+@media(max-width:768px){.form-grid{grid-template-columns:1fr}}
+
+/* Table */
+.tbl-wrap{overflow-x:auto;border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:.85rem;font-variant-numeric:tabular-nums}
+th{position:sticky;top:0;background:#f8fafc;text-align:left;font-weight:600;font-size:.75rem;color:var(--cds-muted);padding:10px 12px;border-bottom:2px solid var(--cds-border);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid #f1f5f9;white-space:nowrap}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:#f1f5f9}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:10px;font-size:.875rem;font-weight:500;color:#fff;z-index:200;opacity:0;transform:translateY(12px);transition:all .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast-ok{background:var(--cds-ok)}
+.toast-err{background:var(--cds-danger)}
+</style>
+</head>
+<body>
+
+<!-- Login Overlay -->
+<div id="login-overlay">
+  <div class="login-box">
+    <h2>KPI Confiabilidad</h2>
+    <div id="login-error"></div>
+    <form id="login-form">
+      <div class="field" style="margin-bottom:8px">
+        <input id="login-user" placeholder="Usuario" required>
+      </div>
+      <div class="field" style="margin-bottom:16px">
+        <input id="login-pass" type="password" placeholder="Contraseña" required>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%">Iniciar sesión</button>
+    </form>
+  </div>
+</div>
+
+<!-- Header -->
+<header class="hdr">
+  <span class="hdr-title">Reporte de Turno</span>
+  <div class="hdr-right">
+    <span class="hdr-user" id="hdr-user"></span>
+    <button class="btn btn-sm btn-secondary" id="btn-logout">Cerrar sesión</button>
+  </div>
+</header>
+
+<!-- Main Content -->
+<main class="container" id="app" style="display:none">
+
+  <!-- Section 1: Turno Header -->
+  <section class="card">
+    <div class="turno-header">
+      <div class="field">
+        <label for="fecha">Fecha</label>
+        <input type="date" id="fecha">
+      </div>
+      <div class="field">
+        <label>Turno</label>
+        <div class="radio-group">
+          <label><input type="radio" name="turno" value="A" checked><span>A</span></label>
+          <label><input type="radio" name="turno" value="B"><span>B</span></label>
+        </div>
+      </div>
+      <div class="field">
+        <label>Supervisor</label>
+        <div style="padding:8px 0;font-weight:600;font-size:.875rem" id="supervisor-name">—</div>
+      </div>
+      <div class="badge" id="badge-count">0 registros hoy</div>
+    </div>
+  </section>
+
+  <!-- Section 2: Formulario de Detención -->
+  <section class="card">
+    <h2 id="form-title">Nueva Detención</h2>
+    <form id="det-form" class="form-grid" autocomplete="off">
+
+      <!-- Left Column -->
+      <div class="field">
+        <label for="equipo">Equipo</label>
+        <select id="equipo" required><option value="">Seleccionar…</option></select>
+      </div>
+      <div class="field">
+        <label for="sistema">Sistema</label>
+        <select id="sistema"><option value="">Seleccionar…</option></select>
+      </div>
+
+      <div class="field">
+        <label>Mantenimiento</label>
+        <div class="radio-group">
+          <label><input type="radio" name="mant" value="NP" checked><span>NP</span></label>
+          <label><input type="radio" name="mant" value="PL"><span>PL</span></label>
+        </div>
+      </div>
+      <div class="field">
+        <label for="subsistema">Subsistema</label>
+        <select id="subsistema"><option value="">Seleccionar…</option></select>
+      </div>
+
+      <div class="field">
+        <label for="tipo_perdida">Tipo de Pérdida</label>
+        <select id="tipo_perdida"><option value="">Seleccionar…</option></select>
+      </div>
+      <div class="field">
+        <label for="componente">Componente</label>
+        <select id="componente"><option value="">Seleccionar…</option></select>
+      </div>
+
+      <div class="field">
+        <label for="tipo_ot">Tipo de OT</label>
+        <select id="tipo_ot"><option value="">Seleccionar…</option></select>
+      </div>
+      <div class="field">
+        <label for="hora_inicio">Hora Inicio</label>
+        <input type="time" id="hora_inicio">
+      </div>
+
+      <div class="field">
+        <label for="ubicacion">Ubicación</label>
+        <select id="ubicacion"><option value="">Seleccionar…</option></select>
+      </div>
+      <div class="field">
+        <label for="hora_fin">Hora Fin</label>
+        <input type="time" id="hora_fin">
+      </div>
+
+      <div class="field">
+        <label for="evento">Evento / Descripción</label>
+        <textarea id="evento" rows="2"></textarea>
+      </div>
+      <div class="field">
+        <label for="det_horas">Detención Total (horas)</label>
+        <input type="number" id="det_horas" step="0.01" min="0">
+      </div>
+
+      <div class="field">
+        <label>Det. Continua Día</label>
+        <div class="toggle" data-field="det_cont_dia">
+          <div class="toggle-track" tabindex="0" role="switch" aria-checked="false"><div class="toggle-thumb"></div></div>
+          <span class="toggle-label">NO</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Det. Continua Mes</label>
+        <div class="toggle" data-field="det_cont_mes">
+          <div class="toggle-track" tabindex="0" role="switch" aria-checked="false"><div class="toggle-thumb"></div></div>
+          <span class="toggle-label">NO</span>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="btn-save">Guardar Registro</button>
+        <button type="button" class="btn btn-secondary" id="btn-clear">Limpiar</button>
+        <button type="button" class="btn btn-secondary" id="btn-cancel-edit" style="display:none">Cancelar</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Section 3: Registros del Turno -->
+  <section class="card">
+    <h2>Registros del Turno</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Equipo</th><th>Mant</th><th>Tipo Pérdida</th><th>Sistema</th>
+            <th>Componente</th><th>Inicio</th><th>Fin</th><th>Horas</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tbl-body"></tbody>
+      </table>
+    </div>
+    <p id="tbl-empty" style="text-align:center;color:var(--cds-muted);padding:24px 0;font-size:.875rem;display:none">Sin registros para este turno.</p>
+  </section>
+</main>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ─── State ─── */
+let token = localStorage.getItem('jwt') || '';
+let userName = '';
+let editId = null;
+const cache = {};
+
+/* ─── Helpers ─── */
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const API = '';
+
+function headers() {
+  return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+}
+
+async function api(method, path, body) {
+  const opts = { method, headers: headers() };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(API + path, opts);
+  if (r.status === 401) { logout(); throw new Error('No autorizado'); }
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.detail || r.statusText); }
+  return r.status === 204 ? null : r.json();
+}
+
+function toast(msg, ok = true) {
+  const el = $('#toast');
+  el.textContent = msg;
+  el.className = `toast ${ok ? 'toast-ok' : 'toast-err'} show`;
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/* ─── Auth ─── */
+async function tryValidateToken() {
+  if (!token) return showLogin();
+  try {
+    const data = await api('GET', '/api/me');
+    userName = data.nombre || data.username || '';
+    showApp();
+  } catch { showLogin(); }
+}
+
+function showLogin() {
+  token = '';
+  $('#login-overlay').style.display = 'flex';
+  $('#app').style.display = 'none';
+}
+
+function showApp() {
+  $('#login-overlay').style.display = 'none';
+  $('#app').style.display = '';
+  $('#hdr-user').textContent = userName;
+  $('#supervisor-name').textContent = userName;
+  initApp();
+}
+
+function logout() {
+  localStorage.removeItem('jwt');
+  token = '';
+  showLogin();
+}
+
+$('#login-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const errEl = $('#login-error');
+  errEl.style.display = 'none';
+  try {
+    const res = await fetch(API + '/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: $('#login-user').value, password: $('#login-pass').value })
+    });
+    if (!res.ok) throw new Error('Credenciales inválidas');
+    const data = await res.json();
+    token = data.token || data.access_token;
+    localStorage.setItem('jwt', token);
+    userName = data.nombre || data.username || $('#login-user').value;
+    showApp();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  }
+});
+
+$('#btn-logout').addEventListener('click', logout);
+
+/* ─── Toggles ─── */
+$$('.toggle-track').forEach(track => {
+  function flip() {
+    const on = track.getAttribute('aria-checked') !== 'true';
+    track.setAttribute('aria-checked', on);
+    track.classList.toggle('on', on);
+    track.nextElementSibling.textContent = on ? 'SÍ' : 'NO';
+  }
+  track.addEventListener('click', flip);
+  track.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flip(); } });
+});
+
+/* ─── Dropdown loading ─── */
+async function loadList(key) {
+  if (cache[key]) return cache[key];
+  cache[key] = await api('GET', `/api/listas/${key}`);
+  return cache[key];
+}
+
+function populateSelect(sel, items, valueKey = 'id', textKey = 'nombre') {
+  const val = sel.value;
+  sel.innerHTML = '<option value="">Seleccionar…</option>';
+  (items || []).forEach(it => {
+    const o = document.createElement('option');
+    o.value = typeof it === 'string' ? it : it[valueKey];
+    o.textContent = typeof it === 'string' ? it : it[textKey];
+    sel.appendChild(o);
+  });
+  sel.value = val;
+}
+
+async function loadAllLists() {
+  const keys = ['equipo', 'tipo_ot', 'ubicacion', 'sistema', 'subsistema', 'componente', 'tipo_perdida_np', 'tipo_perdida_pl'];
+  await Promise.all(keys.map(k => loadList(k)));
+  populateSelect($('#equipo'), cache.equipo);
+  populateSelect($('#tipo_ot'), cache.tipo_ot);
+  populateSelect($('#ubicacion'), cache.ubicacion);
+  populateSelect($('#sistema'), cache.sistema);
+  updateTipoPerdida();
+}
+
+/* ─── Cascading dropdowns ─── */
+function updateTipoPerdida() {
+  const mant = document.querySelector('input[name="mant"]:checked').value;
+  const items = mant === 'NP' ? cache.tipo_perdida_np : cache.tipo_perdida_pl;
+  populateSelect($('#tipo_perdida'), items);
+}
+
+function updateSubsistema() {
+  const padre = $('#sistema').value;
+  const items = (cache.subsistema || []).filter(i => String(i.padre ?? i.sistema_id ?? i.sistema) === String(padre));
+  populateSelect($('#subsistema'), items);
+  updateComponente();
+}
+
+function updateComponente() {
+  const padre = $('#subsistema').value;
+  const items = (cache.componente || []).filter(i => String(i.padre ?? i.subsistema_id ?? i.subsistema) === String(padre));
+  populateSelect($('#componente'), items);
+}
+
+$$('input[name="mant"]').forEach(r => r.addEventListener('change', updateTipoPerdida));
+$('#sistema').addEventListener('change', updateSubsistema);
+$('#subsistema').addEventListener('change', updateComponente);
+
+/* ─── Auto-calc hours ─── */
+function calcHours() {
+  const ini = $('#hora_inicio').value;
+  const fin = $('#hora_fin').value;
+  if (!ini || !fin) return;
+  const [h1, m1] = ini.split(':').map(Number);
+  const [h2, m2] = fin.split(':').map(Number);
+  let mins = (h2 * 60 + m2) - (h1 * 60 + m1);
+  if (mins < 0) mins += 1440;
+  $('#det_horas').value = (mins / 60).toFixed(2);
+}
+
+$('#hora_inicio').addEventListener('change', calcHours);
+$('#hora_fin').addEventListener('change', calcHours);
+
+/* ─── Turno context ─── */
+function getFecha() { return $('#fecha').value; }
+function getTurno() { return document.querySelector('input[name="turno"]:checked').value; }
+
+$('#fecha').addEventListener('change', loadRegistros);
+$$('input[name="turno"]').forEach(r => r.addEventListener('change', loadRegistros));
+
+/* ─── CRUD ─── */
+async function loadRegistros() {
+  const rows = await api('GET', `/api/reporte?fecha=${getFecha()}&turno=${getTurno()}`);
+  renderTable(rows || []);
+  updateBadge(rows ? rows.length : 0);
+}
+
+function updateBadge(n) {
+  $('#badge-count').textContent = `${n} registro${n !== 1 ? 's' : ''} hoy`;
+}
+
+function renderTable(rows) {
+  const tbody = $('#tbl-body');
+  tbody.innerHTML = '';
+  $('#tbl-empty').style.display = rows.length ? 'none' : '';
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${esc(r.equipo)}</td><td>${esc(r.mantenimiento)}</td>
+      <td>${esc(r.tipo_perdida)}</td><td>${esc(r.sistema || '')}</td>
+      <td>${esc(r.componente || '')}</td><td>${esc(r.hora_inicio || '')}</td>
+      <td>${esc(r.hora_fin || '')}</td><td>${r.detencion_total_horas ?? ''}</td>
+      <td>
+        <button class="btn-icon" title="Editar" data-edit="${r.id}">&#9998;</button>
+        <button class="btn-icon" title="Eliminar" data-del="${r.id}" style="color:var(--cds-danger)">&#128465;</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => startEdit(rows.find(r => String(r.id) === b.dataset.edit))));
+  tbody.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => confirmDelete(b.dataset.del)));
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function collectForm() {
+  return {
+    fecha: getFecha(),
+    turno: getTurno(),
+    equipo: $('#equipo').value,
+    mantenimiento: document.querySelector('input[name="mant"]:checked').value,
+    tipo_perdida: $('#tipo_perdida').value,
+    tipo_ot: $('#tipo_ot').value,
+    ubicacion: $('#ubicacion').value,
+    sistema: $('#sistema').value,
+    subsistema: $('#subsistema').value,
+    componente: $('#componente').value,
+    hora_inicio: $('#hora_inicio').value,
+    hora_fin: $('#hora_fin').value,
+    detencion_total_horas: parseFloat($('#det_horas').value) || 0,
+    evento: $('#evento').value,
+    det_cont_dia: $('.toggle[data-field="det_cont_dia"] .toggle-track').getAttribute('aria-checked') === 'true',
+    det_cont_mes: $('.toggle[data-field="det_cont_mes"] .toggle-track').getAttribute('aria-checked') === 'true',
+  };
+}
+
+$('#det-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const data = collectForm();
+  if (!data.equipo) { toast('Seleccione un equipo', false); return; }
+  try {
+    if (editId) {
+      await api('PUT', `/api/reporte/${editId}`, data);
+      toast('Registro actualizado');
+    } else {
+      await api('POST', '/api/reporte', data);
+      toast('Registro guardado');
+    }
+    clearForm();
+    loadRegistros();
+  } catch (err) { toast(err.message, false); }
+});
+
+function clearForm() {
+  editId = null;
+  $('#det-form').reset();
+  document.querySelector('input[name="mant"][value="NP"]').checked = true;
+  document.querySelector('input[name="turno"][value="A"]').checked = true;
+  $('#fecha').value = todayISO();
+  $$('.toggle-track').forEach(t => { t.setAttribute('aria-checked', 'false'); t.classList.remove('on'); t.nextElementSibling.textContent = 'NO'; });
+  $('#form-title').textContent = 'Nueva Detención';
+  $('#btn-save').textContent = 'Guardar Registro';
+  $('#btn-cancel-edit').style.display = 'none';
+  updateTipoPerdida();
+}
+
+function startEdit(row) {
+  if (!row) return;
+  editId = row.id;
+  $('#equipo').value = row.equipo || '';
+  setRadio('mant', row.mantenimiento || 'NP');
+  updateTipoPerdida();
+  $('#tipo_perdida').value = row.tipo_perdida || '';
+  $('#tipo_ot').value = row.tipo_ot || '';
+  $('#ubicacion').value = row.ubicacion || '';
+  $('#sistema').value = row.sistema || '';
+  updateSubsistema();
+  $('#subsistema').value = row.subsistema || '';
+  updateComponente();
+  $('#componente').value = row.componente || '';
+  $('#hora_inicio').value = row.hora_inicio || '';
+  $('#hora_fin').value = row.hora_fin || '';
+  $('#det_horas').value = row.detencion_total_horas ?? '';
+  $('#evento').value = row.evento || '';
+  setToggle('det_cont_dia', !!row.det_cont_dia);
+  setToggle('det_cont_mes', !!row.det_cont_mes);
+  $('#form-title').textContent = 'Editar Detención';
+  $('#btn-save').textContent = 'Actualizar';
+  $('#btn-cancel-edit').style.display = '';
+  window.scrollTo({ top: $('#det-form').offsetTop - 80, behavior: 'smooth' });
+}
+
+function setRadio(name, val) {
+  const r = document.querySelector(`input[name="${name}"][value="${val}"]`);
+  if (r) r.checked = true;
+}
+
+function setToggle(field, on) {
+  const track = $(`.toggle[data-field="${field}"] .toggle-track`);
+  track.setAttribute('aria-checked', on);
+  track.classList.toggle('on', on);
+  track.nextElementSibling.textContent = on ? 'SÍ' : 'NO';
+}
+
+async function confirmDelete(id) {
+  if (!confirm('¿Eliminar este registro?')) return;
+  try {
+    await api('DELETE', `/api/reporte/${id}`);
+    toast('Registro eliminado');
+    loadRegistros();
+  } catch (err) { toast(err.message, false); }
+}
+
+$('#btn-clear').addEventListener('click', clearForm);
+$('#btn-cancel-edit').addEventListener('click', clearForm);
+
+/* ─── Init ─── */
+async function initApp() {
+  $('#fecha').value = todayISO();
+  await loadAllLists();
+  loadRegistros();
+}
+
+tryValidateToken();
+</script>
+</body>
+</html>

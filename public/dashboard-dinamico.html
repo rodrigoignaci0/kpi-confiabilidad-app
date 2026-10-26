@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard Dinámico KPI Confiabilidad</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { --primary: #1e40af; --success: #16a34a; --warning: #f97316; --danger: #dc2626; --bg: #f8fafc; --border: #e2e8f0; --text: #1e293b; --text2: #64748b; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+
+    .container { max-width: 1600px; margin: 0 auto; padding: 24px; }
+    .header { margin-bottom: 32px; }
+    .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    .header p { color: var(--text2); font-size: 14px; }
+
+    .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; background: white; padding: 16px; border-radius: 8px; border: 1px solid var(--border); }
+    .control { display: flex; flex-direction: column; gap: 4px; }
+    .control label { font-size: 12px; font-weight: 600; color: var(--text2); }
+    .control input, .control select { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: white; color: var(--text); }
+    .control input:focus, .control select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1); }
+
+    .btn-group { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; grid-column: 1 / -1; }
+    .btn { padding: 8px 16px; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: #1e3a8a; transform: translateY(-1px); }
+    .btn-secondary { background: #f1f5f9; color: var(--text); }
+    .btn-secondary:hover { background: #e2e8f0; }
+
+    .upload-zone { text-align: center; padding: 40px 20px; background: white; border: 2px dashed var(--border); border-radius: 8px; margin-bottom: 24px; }
+    .upload-zone h2 { font-size: 18px; margin-bottom: 8px; }
+    .upload-zone p { color: var(--text2); font-size: 14px; margin-bottom: 16px; }
+    .upload-zone input[type="file"] { padding: 8px; margin-bottom: 16px; border: 1px solid var(--border); border-radius: 6px; }
+    .db-info { font-size: 12px; color: var(--text2); margin-top: 16px; padding: 12px; background: var(--bg); border-radius: 6px; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .kpi-card { background: white; padding: 20px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .kpi-label { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .kpi-value { font-size: 32px; font-weight: 700; color: var(--text); line-height: 1; margin-bottom: 4px; }
+    .kpi-unit { font-size: 13px; color: var(--text2); }
+    .kpi-status { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; margin-top: 8px; }
+    .kpi-status.good { background: #dcfce7; color: #166534; }
+    .kpi-status.warning { background: #fed7aa; color: #b45309; }
+    .kpi-status.danger { background: #fee2e2; color: #991b1b; }
+
+    .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .chart-container { background: white; padding: 20px; border-radius: 8px; border: 1px solid var(--border); }
+    .chart-title { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+
+    .table-container { background: white; padding: 20px; border-radius: 8px; border: 1px solid var(--border); overflow-x: auto; }
+    .table-title { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: var(--bg); padding: 12px; text-align: left; font-weight: 600; color: var(--text); border-bottom: 2px solid var(--border); }
+    td { padding: 12px; border-bottom: 1px solid var(--border); }
+    tr:hover { background: var(--bg); }
+
+    .loading { text-align: center; padding: 40px; color: var(--text2); }
+    .spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; }
+    .alert-danger { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .alert-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+
+    @media (max-width: 768px) {
+      .container { padding: 16px; }
+      .header h1 { font-size: 20px; }
+      .controls { grid-template-columns: 1fr; }
+      .kpi-grid { grid-template-columns: 1fr; }
+      .charts-grid { grid-template-columns: 1fr; }
+      .kpi-value { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Dashboard Dinámico — KPI Confiabilidad</h1>
+      <p>Análisis en tiempo real de disponibilidad y detenciones de equipos Jumbos</p>
+    </div>
+
+    <div id="uploadSection">
+      <div class="upload-zone">
+        <h2>📊 Cargar Base de Datos</h2>
+        <p>Selecciona: <code>TABLA_MAESTRA_MANTENIBILIDAD_EQUIPOS_MOVILES_66.db</code></p>
+        <input type="file" id="dbFileInput" accept=".db,.sqlite,.sqlite3"/>
+        <button class="btn btn-primary" onclick="cargarBD()">Cargar BD SQLite</button>
+        <div class="db-info" id="dbInfo"></div>
+      </div>
+    </div>
+
+    <div id="alertContainer"></div>
+
+    <div id="content" style="display: none;">
+      <div class="controls">
+        <div class="control">
+          <label for="filterYear">Año</label>
+          <input type="number" id="filterYear" min="2020" max="2030" value="2026"/>
+        </div>
+        <div class="control">
+          <label for="filterWeek">Semana</label>
+          <input type="number" id="filterWeek" min="1" max="53" value="0"/>
+        </div>
+        <div class="control">
+          <label for="filterEquipo">Equipo</label>
+          <select id="filterEquipo"><option value="">Todos</option></select>
+        </div>
+        <div class="control">
+          <label for="filterTurno">Turno</label>
+          <select id="filterTurno">
+            <option value="">Todos</option>
+            <option value="A">A (Día)</option>
+            <option value="B">B (Noche)</option>
+          </select>
+        </div>
+        <div class="control">
+          <label for="filterMantenimiento">Tipo Detención</label>
+          <select id="filterMantenimiento">
+            <option value="">Todos</option>
+            <option value="PM">PM (Preventivo)</option>
+            <option value="NP">NP (No Programado)</option>
+            <option value="PL">PL (Planificado)</option>
+          </select>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-secondary" onclick="resetFilters()">Limpiar</button>
+          <button class="btn btn-primary" onclick="aplicarFiltros()">Aplicar Filtros</button>
+        </div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Disponibilidad Contractual</div>
+          <div class="kpi-value" id="kpiDispContractual">—</div>
+          <div class="kpi-unit">%</div>
+          <div class="kpi-status" id="statusDispContractual"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Horas Detención NP</div>
+          <div class="kpi-value" id="kpiHorasNP">—</div>
+          <div class="kpi-unit">horas</div>
+          <div class="kpi-status" id="statusHorasNP"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Disponibilidad Promedio</div>
+          <div class="kpi-value" id="kpiDispPromedio">—</div>
+          <div class="kpi-unit">%</div>
+          <div class="kpi-status" id="statusDispPromedio"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Equipo Crítico</div>
+          <div class="kpi-value" id="kpiEquipoCritico" style="font-size: 20px;">—</div>
+          <div class="kpi-unit" id="unitEquipoCritico"></div>
+          <div class="kpi-status" id="statusEquipoCritico"></div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-container">
+          <div class="chart-title">Detenciones por Equipo (NP)</div>
+          <canvas id="chartDetencionesPorEquipo"></canvas>
+        </div>
+        <div class="chart-container">
+          <div class="chart-title">Horas por Tipo Detención</div>
+          <canvas id="chartHorasPorTipo"></canvas>
+        </div>
+        <div class="chart-container">
+          <div class="chart-title">Distribución por Turno</div>
+          <canvas id="chartPorTurno"></canvas>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <div class="table-title">Detenciones Registradas (Últimas 30)</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Equipo</th>
+              <th>Fecha</th>
+              <th>Semana</th>
+              <th>Turno</th>
+              <th>Tipo</th>
+              <th>Duración (h)</th>
+            </tr>
+          </thead>
+          <tbody id="tableDetenciones">
+            <tr><td colspan="6" style="text-align: center; color: var(--text2);">Cargando datos...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script async>
+    let db = null;
+    let allData = [];
+    let charts = {};
+
+    async function initSqlJs() {
+      const SQL = await initSqlJs();
+      return SQL;
+    }
+
+    async function cargarBD() {
+      try {
+        const file = document.getElementById('dbFileInput').files[0];
+        if (!file) {
+          mostrarAlerta('Selecciona un archivo .db primero', 'danger');
+          return;
+        }
+
+        mostrarAlerta('Cargando BD... esto puede tomar unos segundos', 'success');
+        const arrayBuffer = await file.arrayBuffer();
+
+        const SQL = await initSqlJs();
+        db = new SQL.Database(new Uint8Array(arrayBuffer));
+
+        // Leer tabla detenciones
+        const result = db.exec("SELECT * FROM detenciones LIMIT 100000");
+        if (result.length === 0) throw new Error('Tabla detenciones vacía');
+
+        const columns = result[0].columns;
+        allData = result[0].values.map(row => {
+          const obj = {};
+          columns.forEach((col, i) => { obj[col] = row[i]; });
+          return obj;
+        });
+
+        // Extraer equipos únicos
+        const equipos = [...new Set(allData.map(d => d.equipo))].filter(Boolean).sort();
+
+        // Llenar select de equipos
+        const selectEquipo = document.getElementById('filterEquipo');
+        selectEquipo.innerHTML = '<option value="">Todos</option>';
+        equipos.forEach(eq => {
+          const opt = document.createElement('option');
+          opt.value = eq;
+          opt.textContent = eq;
+          selectEquipo.appendChild(opt);
+        });
+
+        // Actualizar info
+        document.getElementById('dbInfo').innerHTML = `
+          ✓ Cargado: <strong>${allData.length}</strong> registros |
+          <strong>${equipos.length}</strong> equipos únicos
+        `;
+
+        document.getElementById('uploadSection').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+
+        aplicarFiltros();
+        mostrarAlerta('✓ BD cargada exitosamente', 'success');
+      } catch (error) {
+        mostrarAlerta(`Error: ${error.message}`, 'danger');
+        console.error(error);
+      }
+    }
+
+    function filtrarDatos() {
+      const year = parseInt(document.getElementById('filterYear').value) || 0;
+      const week = parseInt(document.getElementById('filterWeek').value) || 0;
+      const equipo = document.getElementById('filterEquipo').value;
+      const turno = document.getElementById('filterTurno').value;
+      const mantenimiento = document.getElementById('filterMantenimiento').value;
+
+      return allData.filter(row => {
+        if (year && row.semana && Math.floor(row.semana / 100) !== year) return false;
+        if (week && row.semana !== week) return false;
+        if (equipo && row.equipo !== equipo) return false;
+        if (turno && row.turno !== turno) return false;
+        if (mantenimiento && row.mantenimiento !== mantenimiento) return false;
+        return true;
+      });
+    }
+
+    function calcularKPIs() {
+      const datos = filtrarDatos();
+      const totalHoras = 24 * 7;
+      const numEquipos = new Set(datos.map(d => d.equipo)).size || 1;
+
+      // KPI 1: Disponibilidad Contractual (meta 80%)
+      const horasDetenciones = datos.reduce((sum, d) => sum + (parseFloat(d.detencion_total_horas) || 0), 0);
+      const dispContractual = Math.max(0, ((totalHoras * 8 - horasDetenciones) / (totalHoras * 8)) * 100);
+
+      // KPI 2: Horas NP
+      const horasNP = datos.filter(d => d.mantenimiento === 'NP')
+        .reduce((sum, d) => sum + (parseFloat(d.detencion_total_horas) || 0), 0);
+
+      // KPI 3: Disponibilidad Promedio
+      const dispPromedio = dispContractual - (horasNP / (totalHoras * numEquipos)) * 100;
+
+      // KPI 4: Equipo Crítico
+      const horasPorEquipo = {};
+      datos.forEach(d => {
+        const eq = d.equipo;
+        horasPorEquipo[eq] = (horasPorEquipo[eq] || 0) + (parseFloat(d.detencion_total_horas) || 0);
+      });
+      const equipoCritico = Object.keys(horasPorEquipo).length > 0
+        ? Object.keys(horasPorEquipo).reduce((a, b) => horasPorEquipo[a] > horasPorEquipo[b] ? a : b)
+        : 'N/A';
+
+      return { dispContractual, horasNP, dispPromedio, equipoCritico, horasPorEquipo };
+    }
+
+    function actualizarKPIs() {
+      const kpis = calcularKPIs();
+
+      document.getElementById('kpiDispContractual').textContent = kpis.dispContractual.toFixed(1);
+      document.getElementById('kpiHorasNP').textContent = kpis.horasNP.toFixed(1);
+      document.getElementById('kpiDispPromedio').textContent = Math.max(0, kpis.dispPromedio).toFixed(1);
+      document.getElementById('kpiEquipoCritico').textContent = kpis.equipoCritico;
+
+      actualizarSemaforo('statusDispContractual', kpis.dispContractual, 80, true);
+      actualizarSemaforo('statusHorasNP', kpis.horasNP, 20, false);
+      actualizarSemaforo('statusDispPromedio', Math.max(0, kpis.dispPromedio), 80, true);
+    }
+
+    function actualizarSemaforo(elementId, valor, meta, esMaximo) {
+      const el = document.getElementById(elementId);
+      let estado = 'good';
+      if (esMaximo ? valor < meta : valor > meta) estado = 'danger';
+      else if (esMaximo ? valor < meta * 1.1 : valor > meta * 0.9) estado = 'warning';
+
+      el.className = `kpi-status ${estado}`;
+      el.textContent = estado === 'good' ? '✓ Normal' : estado === 'warning' ? '⚠ Alerta' : '✗ Crítico';
+    }
+
+    function actualizarGraficos() {
+      const datos = filtrarDatos();
+
+      // Gráfico 1: Detenciones NP por Equipo
+      const horasPorEquipo = {};
+      datos.filter(d => d.mantenimiento === 'NP').forEach(d => {
+        horasPorEquipo[d.equipo] = (horasPorEquipo[d.equipo] || 0) + (parseFloat(d.detencion_total_horas) || 0);
+      });
+
+      const equiposOrdenados = Object.entries(horasPorEquipo)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 12)
+        .map(e => e[0]);
+
+      crearGrafico('chartDetencionesPorEquipo', 'bar', {
+        labels: equiposOrdenados,
+        datasets: [{
+          label: 'Horas NP',
+          data: equiposOrdenados.map(eq => horasPorEquipo[eq]),
+          backgroundColor: '#ef4444',
+          borderRadius: 4
+        }]
+      });
+
+      // Gráfico 2: Horas por Tipo
+      const horasPorTipo = {};
+      datos.forEach(d => {
+        const tipo = d.mantenimiento || 'Otros';
+        horasPorTipo[tipo] = (horasPorTipo[tipo] || 0) + (parseFloat(d.detencion_total_horas) || 0);
+      });
+
+      crearGrafico('chartHorasPorTipo', 'doughnut', {
+        labels: Object.keys(horasPorTipo),
+        datasets: [{
+          data: Object.values(horasPorTipo),
+          backgroundColor: ['#3b82f6', '#ef4444', '#10b981']
+        }]
+      });
+
+      // Gráfico 3: Por Turno
+      const horasPorTurno = {};
+      datos.forEach(d => {
+        const turno = d.turno === 'A' ? 'Turno A' : d.turno === 'B' ? 'Turno B' : 'Otro';
+        horasPorTurno[turno] = (horasPorTurno[turno] || 0) + (parseFloat(d.detencion_total_horas) || 0);
+      });
+
+      crearGrafico('chartPorTurno', 'bar', {
+        labels: Object.keys(horasPorTurno),
+        datasets: [{
+          label: 'Horas',
+          data: Object.values(horasPorTurno),
+          backgroundColor: ['#8b5cf6', '#06b6d4']
+        }]
+      });
+    }
+
+    function crearGrafico(id, type, config) {
+      const ctx = document.getElementById(id);
+      if (!ctx) return;
+
+      if (charts[id]) charts[id].destroy();
+      charts[id] = new Chart(ctx, {
+        type: type,
+        data: config,
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: { legend: { position: 'bottom' } },
+          scales: type === 'bar' ? {
+            y: { beginAtZero: true },
+            x: { ticks: { maxRotation: 45 } }
+          } : undefined
+        }
+      });
+    }
+
+    function actualizarTabla() {
+      const datos = filtrarDatos().sort((a, b) => {
+        const dateA = new Date(a.fecha_inicio || 0);
+        const dateB = new Date(b.fecha_inicio || 0);
+        return dateB - dateA;
+      }).slice(0, 30);
+
+      const tbody = document.getElementById('tableDetenciones');
+      if (datos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text2);">Sin datos</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = datos.map(d => `
+        <tr>
+          <td><strong>${d.equipo || '—'}</strong></td>
+          <td>${d.fecha_inicio ? new Date(d.fecha_inicio).toLocaleDateString() : '—'}</td>
+          <td>${d.semana || '—'}</td>
+          <td>${d.turno || '—'}</td>
+          <td>${d.mantenimiento || '—'}</td>
+          <td>${(parseFloat(d.detencion_total_horas) || 0).toFixed(1)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function aplicarFiltros() {
+      if (allData.length === 0) return;
+      actualizarKPIs();
+      actualizarGraficos();
+      actualizarTabla();
+    }
+
+    function resetFilters() {
+      document.getElementById('filterYear').value = 2026;
+      document.getElementById('filterWeek').value = 0;
+      document.getElementById('filterEquipo').value = '';
+      document.getElementById('filterTurno').value = '';
+      document.getElementById('filterMantenimiento').value = '';
+      aplicarFiltros();
+    }
+
+    function mostrarAlerta(mensaje, tipo) {
+      const container = document.getElementById('alertContainer');
+      const alert = document.createElement('div');
+      alert.className = `alert alert-${tipo}`;
+      alert.textContent = mensaje;
+      container.appendChild(alert);
+      setTimeout(() => alert.remove(), 4000);
+    }
+  </script>
+</body>
+</html>

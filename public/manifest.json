@@ -1,0 +1,10 @@
+{
+  "name": "KPIs Confiabilidad",
+  "short_name": "KPIs",
+  "description": "Gestión de indicadores contractuales de confiabilidad",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f0f2f5",
+  "theme_color": "#1d4ed8",
+  "icons": []
+}
